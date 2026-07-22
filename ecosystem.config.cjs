@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "otto-lms",
       script: "node_modules/next/dist/bin/next",
-      args: "start -p 3000",
+      args: "start -p 3050",
       cwd: __dirname,
       instances: 1,
       exec_mode: "fork",
