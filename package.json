@@ -11,6 +11,12 @@
     "seed:participants": "tsx scripts/seed-participants.ts"
   },
   "dependencies": {
+    "@types/adm-zip": "0.5.8",
+    "@types/mime-types": "3.0.1",
+    "@types/node": "24.3.0",
+    "@types/nodemailer": "8.0.1",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
     "adm-zip": "0.6.0",
     "bcryptjs": "3.0.3",
     "csv-parse": "7.0.1",
@@ -24,20 +30,14 @@
     "nodemailer": "9.0.3",
     "react": "19.2.7",
     "react-dom": "19.2.7",
+    "typescript": "^5.9.3",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@types/adm-zip": "0.5.8",
-    "@types/mime-types": "3.0.1",
-    "@types/node": "24.3.0",
-    "@types/nodemailer": "8.0.1",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "tsx": "4.20.5",
-    "typescript": "^5.9.3"
+    "tsx": "4.20.5"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22.x"
   },
   "overrides": {
     "postcss": "8.5.10"
