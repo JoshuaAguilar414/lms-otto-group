@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 
-export default function LogoutButton() {
+export default function LogoutButton({ className = "" }: { className?: string }) {
   const [busy, setBusy] = useState(false);
   return (
     <button
-      className="btn secondary small"
+      className={`otto-signout-btn${className ? ` ${className}` : ""}`}
       disabled={busy}
       onClick={async () => {
         setBusy(true);

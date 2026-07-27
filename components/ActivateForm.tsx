@@ -47,7 +47,7 @@ export default function ActivateForm({ token }: { token: string }) {
         <label htmlFor="confirmPassword">Confirm password</label>
         <input className="input" id="confirmPassword" name="confirmPassword" type="password" minLength={10} required />
       </div>
-      <button className="btn" disabled={busy}>{busy ? "Activating…" : "Activate account"}</button>
+      <button className="btn btn-otto" disabled={busy}>{busy ? "Activating…" : "Activate account"}</button>
     </form>
   );
 }

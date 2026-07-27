@@ -1,6 +1,6 @@
 import { isAdminRole } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
-import TopNav from "@/components/TopNav";
+import OttoPageShell from "@/components/OttoPageShell";
 
 export default function Shell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
   const admin = isAdminRole(user.role);
@@ -18,9 +18,8 @@ export default function Shell({ user, children }: { user: SessionUser; children:
       ];
 
   return (
-    <div className="shell">
-      <TopNav homeHref={admin ? "/admin" : "/dashboard"} items={items} />
-      <main className="container">{children}</main>
-    </div>
+    <OttoPageShell items={items}>
+      {children}
+    </OttoPageShell>
   );
 }
