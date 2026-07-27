@@ -5,8 +5,8 @@ export const metadata: Metadata = {
   title: "Otto Group Academy",
   description: "VECTRA International learning management system",
   icons: {
-    icon: "https://static.ottogroup.com/wLayout22/wGlobal/layout/images/site-icons/favicon-32x32.png",
-    shortcut: "https://static.ottogroup.com/wLayout22/wGlobal/layout/images/site-icons/favicon-32x32.png"
+    icon: "/favicon-32x32.png",
+    shortcut: "/favicon-32x32.png"
   }
 };
 
