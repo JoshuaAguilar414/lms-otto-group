@@ -32,11 +32,16 @@ export async function POST(request: Request) {
     const email = pick(row, ["Corporate Email", "Email", "email"]).trim().toLowerCase();
     const companyId = pick(row, ["Company ID", "ID", "companyId"]);
     const stakeholderRaw = pick(row, ["Stakeholder Group", "Stakeholder", "stakeholderGroup"]);
-    const facilityTraining = pick(row, ["Facility Training", "facilityTraining"]);
+    const facilityTraining = pick(row, [
+      "Organizational Name",
+      "Organisation Name",
+      "Facility Training",
+      "facilityTraining"
+    ]);
     const stakeholderGroup = parseStakeholder(stakeholderRaw);
     const name = `${firstName} ${lastName}`.trim();
 
-    if (!firstName || !lastName || !email.includes("@") || !companyId || !stakeholderGroup) {
+    if (!firstName || !lastName || !email.includes("@") || !companyId || !stakeholderGroup || !facilityTraining) {
       skipped++;
       errors.push(`Row ${index + 2}: missing required learner/roster fields`);
       continue;
@@ -48,7 +53,7 @@ export async function POST(request: Request) {
         name,
         companyId,
         stakeholderGroup,
-        facilityTraining: stakeholderGroup === "Facility" ? facilityTraining || undefined : ""
+        facilityTraining
       });
       created++;
       emailed++;

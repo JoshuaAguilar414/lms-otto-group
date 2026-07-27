@@ -32,8 +32,8 @@ export const createUserSchema = z.object({
     if (!data.stakeholderGroup) {
       ctx.addIssue({ code: "custom", path: ["stakeholderGroup"], message: "Select the stakeholder group." });
     }
-    if (data.stakeholderGroup === "Facility" && !data.facilityTraining) {
-      ctx.addIssue({ code: "custom", path: ["facilityTraining"], message: "Enter the Facility Training name." });
+    if (!data.facilityTraining) {
+      ctx.addIssue({ code: "custom", path: ["facilityTraining"], message: "Enter the organizational name." });
     }
     return;
   }
@@ -49,11 +49,11 @@ export const registerSchema = z.object({
   stakeholderGroup: z.enum(["Business Partner", "Facility"]),
   facilityTraining: z.string().trim().max(200).optional().default("")
 }).superRefine((data, ctx) => {
-  if (data.stakeholderGroup === "Facility" && !data.facilityTraining) {
+  if (!data.facilityTraining) {
     ctx.addIssue({
       code: "custom",
       path: ["facilityTraining"],
-      message: "Enter your Facility Training name."
+      message: "Enter your organizational name."
     });
   }
 });
@@ -72,7 +72,7 @@ export const participantSchema = z.object({
   belongsToBp: z.string().trim().max(300).optional().default(""),
   country: z.string().trim().max(100).optional().default(""),
   topic: z.string().trim().max(200).optional().default("Freely Chosen Employment"),
-  nominatedProvider: z.string().trim().max(200).optional().default("Vectra")
+  nominatedProvider: z.string().trim().max(200).optional().default("VECTRA")
 });
 
 export const assignCourseSchema = z.object({

@@ -1,9 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import { apiError, isApiError, requireApiUser } from "@/lib/api";
 import { getDb } from "@/lib/db";
-import { courseStorageRoot } from "@/lib/scorm";
+import { removeScormPackage } from "@/lib/scorm";
 import type { CourseDocument } from "@/lib/types";
 import { safeObjectId } from "@/lib/utils";
 import { updateCourseSchema } from "@/lib/validation";
@@ -63,7 +61,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
     await db.collection("assignments").deleteMany({ courseId: id });
 
     if (course.type === "SCORM_12") {
-      await fs.rm(path.join(courseStorageRoot(), id.toHexString()), { recursive: true, force: true });
+      await removeScormPackage(id.toHexString());
     }
 
     return NextResponse.json({ ok: true });

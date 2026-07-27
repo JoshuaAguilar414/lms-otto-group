@@ -45,7 +45,7 @@ export default async function AdminPage() {
         <h2>{fullAdmin ? "Recommended onboarding sequence" : "Coordinator checklist"}</h2>
         {fullAdmin ? (
           <ol className="muted" style={{ marginBottom: 0, paddingLeft: 18, lineHeight: 1.7 }}>
-            <li>Import the Vectra participant roster (Facilities / Business Partners + Company IDs).</li>
+            <li>Import the VECTRA participant roster (Facilities / Business Partners + Company IDs).</li>
             <li>Upload the Freely Chosen Employment SCORM 1.2 course.</li>
             <li>Learners self-register with an approved Company ID, or import a learner email CSV.</li>
             <li>Assign the course (auto-assigned on registration when the course title matches the topic).</li>

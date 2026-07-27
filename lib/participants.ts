@@ -36,7 +36,7 @@ export function parseParticipantCsv(text: string): Array<Omit<ParticipantDocumen
       belongsToBp: pick(row, ["Belongs to BP", "Belongs to BP ", "belongsToBp", "Business Partner"]),
       country: pick(row, ["Country", "country"]),
       topic: pick(row, ["Topic", "topic"]) || "Freely Chosen Employment",
-      nominatedProvider: pick(row, ["Nominated Provider", "Provider", "nominatedProvider"]) || "Vectra"
+      nominatedProvider: pick(row, ["Nominated Provider", "Provider", "nominatedProvider"]) || "VECTRA"
     });
   }
   return rows;

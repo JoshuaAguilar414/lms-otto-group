@@ -36,7 +36,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ pa
     ...parsed.data,
     companyId: normalizeCompanyId(parsed.data.companyId),
     topic: parsed.data.topic || "Freely Chosen Employment",
-    nominatedProvider: parsed.data.nominatedProvider || "Vectra"
+    nominatedProvider: parsed.data.nominatedProvider || "VECTRA"
   };
 
   const db = await getDb();

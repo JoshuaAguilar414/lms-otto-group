@@ -22,7 +22,7 @@ const emptyForm = {
   belongsToBp: "",
   country: "",
   topic: "Freely Chosen Employment",
-  nominatedProvider: "Vectra"
+  nominatedProvider: "VECTRA"
 };
 
 export default function AdminParticipants({
@@ -85,7 +85,7 @@ export default function AdminParticipants({
       belongsToBp: String(form.get("belongsToBp") || "").trim(),
       country: String(form.get("country") || "").trim(),
       topic: String(form.get("topic") || "").trim() || "Freely Chosen Employment",
-      nominatedProvider: String(form.get("nominatedProvider") || "").trim() || "Vectra"
+      nominatedProvider: String(form.get("nominatedProvider") || "").trim() || "VECTRA"
     };
   }
 
@@ -186,7 +186,7 @@ export default function AdminParticipants({
           <form className="card" onSubmit={importCsv}>
             <h2>Import roster CSV</h2>
             <p className="helper">
-              Bulk import from the Vectra participant list. Headers: Stakeholder, ID, Name, Belongs to BP, Country, Topic, Nominated Provider.
+              Bulk import from the VECTRA participant list. Headers: Stakeholder, ID, Name, Belongs to BP, Country, Topic, Nominated Provider.
             </p>
             <div className="field">
               <label>CSV file</label>

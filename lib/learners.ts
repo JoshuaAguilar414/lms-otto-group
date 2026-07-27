@@ -48,24 +48,22 @@ export async function inviteLearner(db: Db, input: InviteLearnerInput): Promise<
     throw new InviteError("This email is reserved for a system administrator account.", 400);
   }
   const { firstName, lastName } = splitFullName(input.name);
+  const organizationalName = input.facilityTraining?.trim();
+  if (!organizationalName) {
+    throw new InviteError("Enter your organizational name.", 400);
+  }
   const participant = await findApprovedParticipant(db, input.companyId, input.stakeholderGroup);
   if (!participant) {
     throw new InviteError(
-      "This Company ID is not on the approved Vectra participant list for the selected stakeholder group.",
+      "This Company ID is not on the approved VECTRA participant list for the selected stakeholder group.",
       400
     );
   }
-  if (input.stakeholderGroup === "Facility") {
-    if (!input.facilityTraining?.trim()) {
-      throw new InviteError("Enter your Facility Training name.", 400);
-    }
-    const facilityName = input.facilityTraining.trim().toLowerCase();
-    if (participant.name.trim().toLowerCase() !== facilityName) {
-      throw new InviteError(
-        "Facility Training must match the approved facility name for this Company ID on the participant roster.",
-        400
-      );
-    }
+  if (participant.name.trim().toLowerCase() !== organizationalName.toLowerCase()) {
+    throw new InviteError(
+      "Organizational name must match the approved organization name for this Company ID on the participant roster.",
+      400
+    );
   }
   if (await db.collection<UserDocument>("users").findOne({ email })) {
     throw new InviteError("An account with this email already exists.", 409);
@@ -83,7 +81,7 @@ export async function inviteLearner(db: Db, input: InviteLearnerInput): Promise<
     belongsToBp: participant.belongsToBp,
     country: participant.country,
     topic: participant.topic,
-    ...(input.stakeholderGroup === "Facility" ? { facilityTraining: input.facilityTraining!.trim() } : {}),
+    facilityTraining: organizationalName,
     role: "LEARNER",
     status: "INVITED",
     inviteTokenHash: invite.hash,

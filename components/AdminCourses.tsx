@@ -165,7 +165,10 @@ export default function AdminCourses({
         <div className="grid two">
           <form className="card" onSubmit={uploadScorm}>
             <h2>Upload SCORM 1.2</h2>
-            <p className="helper">Export from Mindsmith (or another tool) as SCORM 1.2 ZIP, then upload here for progress tracking.</p>
+            <p className="helper">
+              Export from Mindsmith (or another tool) as SCORM 1.2 ZIP, then upload here for progress tracking.
+              On Render free, set Cloudflare R2 env vars (<code>R2_*</code>) so packages persist across restarts.
+            </p>
             <div className="field"><label>Course title</label><input className="input" name="title" required /></div>
             <div className="field"><label>Description</label><textarea className="textarea" name="description" /></div>
             <div className="field"><label>SCORM ZIP package</label><input className="input" type="file" name="file" accept=".zip,application/zip" required /></div>

@@ -195,9 +195,9 @@ export default function AdminUsers({
                   <option value="Facility">Facility</option>
                 </select>
               </div>
-              {stakeholderGroup === "Facility" && (
+              {stakeholderGroup && (
                 <div className="field">
-                  <label>Facility Training</label>
+                  <label>Organizational name</label>
                   <input className="input" name="facilityTraining" required />
                 </div>
               )}
@@ -217,7 +217,7 @@ export default function AdminUsers({
         <form className="card" onSubmit={importCsv}>
           <h2>Import learner CSV</h2>
           <p className="muted">
-            Required headers: First Name, Last Name, Corporate Email, Company ID, Stakeholder Group, Facility Training.
+            Required headers: First Name, Last Name, Corporate Email, Company ID, Stakeholder Group, Organizational Name.
             Company ID and Stakeholder Group must match the participant roster.
           </p>
           <div className="field"><label>CSV file</label><input className="input" name="file" type="file" accept=".csv,text/csv" required /></div>

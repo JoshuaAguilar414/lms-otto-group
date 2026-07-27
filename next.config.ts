@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
       "./sample-learners.csv"
     ]
   },
-  serverExternalPackages: ["adm-zip"],
+  serverExternalPackages: ["adm-zip", "@aws-sdk/client-s3"],
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb"

@@ -11,6 +11,7 @@
     "seed:participants": "tsx scripts/seed-participants.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.787.0",
     "@types/adm-zip": "0.5.8",
     "@types/mime-types": "3.0.1",
     "@types/node": "24.3.0",

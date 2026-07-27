@@ -53,20 +53,20 @@ See `AZURE_DEPLOYMENT.md` for the complete Azure VM setup.
 Must match organizations in `sample-participants.csv` (Company ID + Stakeholder Group).
 
 ```csv
-First Name,Last Name,Corporate Email,Company ID,Stakeholder Group,Facility Training
+First Name,Last Name,Corporate Email,Company ID,Stakeholder Group,Organizational Name
 Ayesha,Khan,ayesha.khan@knittex.example,25879550,Facility,Knittex Garments Unit 1
-Rahul,Mehta,rahul.mehta@adamexports.example,20010395,Business Partner,
+Rahul,Mehta,rahul.mehta@adamexports.example,20010395,Business Partner,Adam Exports
 ```
 
-For Business Partner rows, leave Facility Training empty.
+Organizational Name is required for both Facility and Business Partner rows and must match the roster Name.
 
 ## Participant roster CSV format
 
-Use the Vectra facility participant list (organizations in scope). Example headers:
+Use the VECTRA facility participant list (organizations in scope). Example headers:
 
 ```csv
 Stakeholder,ID,Name,Belongs to BP,Country,Topic,Nominated Provider
-Facility,25879550,Knittex Garments Unit 1,30000009 (Knittex Garments),Pakistan,Freely Chosen Employment,Vectra
+Facility,25879550,Knittex Garments Unit 1,30000009 (Knittex Garments),Pakistan,Freely Chosen Employment,VECTRA
 ```
 
 Import via **Admin → Participants**, or seed locally:

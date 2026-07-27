@@ -4,44 +4,86 @@ import { FormEvent, useEffect, useState } from "react";
 
 type StakeholderGroup = "Business Partner" | "Facility";
 
+type OrgMatch = {
+  name: string;
+  stakeholderGroup: StakeholderGroup;
+  companyId: string;
+};
+
 export default function RegisterForm() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [stakeholderGroup, setStakeholderGroup] = useState<StakeholderGroup | "">("");
-  const [facilityTraining, setFacilityTraining] = useState("");
-  const [facilities, setFacilities] = useState<string[]>([]);
+  const [organizationalName, setOrganizationalName] = useState("");
+  const [matches, setMatches] = useState<OrgMatch[]>([]);
+  const [lookupDone, setLookupDone] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [message, setMessage] = useState("");
 
+  const organizations = [...new Set(matches.map((item) => item.name))];
+  const needsOrgChoice = organizations.length > 1;
+
   useEffect(() => {
-    if (stakeholderGroup !== "Facility" || !companyId.trim()) {
-      setFacilities([]);
+    if (!companyId.trim()) {
+      setMatches([]);
+      setOrganizationalName("");
+      setLookupDone(false);
       return;
     }
+
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const response = await fetch(`/api/facilities?companyId=${encodeURIComponent(companyId.trim())}`, {
+        const params = new URLSearchParams({ companyId: companyId.trim() });
+        if (stakeholderGroup) params.set("stakeholderGroup", stakeholderGroup);
+        const response = await fetch(`/api/facilities?${params}`, {
           signal: controller.signal
         });
         const data = await response.json();
-        if (response.ok) setFacilities(data.facilities || []);
+        if (!response.ok) return;
+
+        const nextMatches: OrgMatch[] = Array.isArray(data.matches) ? data.matches : [];
+        setMatches(nextMatches);
+        setLookupDone(true);
+
+        const names = [...new Set(nextMatches.map((item) => item.name))];
+        if (names.length === 1) {
+          setOrganizationalName(names[0]);
+          if (!stakeholderGroup && nextMatches[0]?.stakeholderGroup) {
+            setStakeholderGroup(nextMatches[0].stakeholderGroup);
+          }
+        } else if (names.length === 0) {
+          setOrganizationalName("");
+        } else if (!names.includes(organizationalName)) {
+          setOrganizationalName("");
+        }
       } catch {
         // ignore abort/network while typing
       }
     }, 250);
+
     return () => {
       controller.abort();
       clearTimeout(timer);
     };
+    // organizationalName intentionally omitted — only react to company/stakeholder changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, stakeholderGroup]);
 
   function selectStakeholder(group: StakeholderGroup) {
     setStakeholderGroup(group);
-    if (group !== "Facility") setFacilityTraining("");
+  }
+
+  function onCompanyIdChange(value: string) {
+    setCompanyId(value);
+    if (!value.trim()) {
+      setOrganizationalName("");
+      setMatches([]);
+      setLookupDone(false);
+    }
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -50,8 +92,8 @@ export default function RegisterForm() {
       setError("Select your stakeholder group.");
       return;
     }
-    if (stakeholderGroup === "Facility" && !facilityTraining.trim()) {
-      setError("Select your Facility Training name.");
+    if (!organizationalName.trim()) {
+      setError("Enter a valid Company ID so the organizational name can be filled.");
       return;
     }
     setBusy(true);
@@ -64,7 +106,7 @@ export default function RegisterForm() {
         name,
         companyId,
         stakeholderGroup,
-        facilityTraining: stakeholderGroup === "Facility" ? facilityTraining.trim() : ""
+        facilityTraining: organizationalName.trim()
       })
     });
     const data = await response.json();
@@ -89,6 +131,12 @@ export default function RegisterForm() {
       </div>
     );
   }
+
+  const orgPlaceholder = !companyId.trim()
+    ? "Filled automatically from Company ID"
+    : lookupDone && organizations.length === 0
+      ? "No organization found for this Company ID"
+      : "Looking up organization…";
 
   return (
     <form onSubmit={onSubmit}>
@@ -130,10 +178,21 @@ export default function RegisterForm() {
           type="text"
           placeholder="From the participant / invitation list"
           value={companyId}
-          onChange={(event) => setCompanyId(event.target.value)}
+          onChange={(event) => onCompanyIdChange(event.target.value)}
           required
         />
-        <div className="helper">Registration only succeeds if this ID is on the approved Vectra participant roster.</div>
+        <div className="helper">
+          Registration only succeeds if this ID is on the approved VECTRA participant roster.
+          {organizations.length === 1 && (
+            <> Matched organization: <strong>{organizations[0]}</strong>.</>
+          )}
+          {organizations.length > 1 && (
+            <> Multiple organizations found — choose one below.</>
+          )}
+          {lookupDone && companyId.trim() && organizations.length === 0 && (
+            <> No organization found for this Company ID.</>
+          )}
+        </div>
       </div>
 
       <div className="field">
@@ -161,36 +220,38 @@ export default function RegisterForm() {
         </div>
       </div>
 
-      {stakeholderGroup === "Facility" && (
-        <div className="field">
-          <label htmlFor="facilityTraining">Facility Training</label>
-          {facilities.length ? (
-            <select
-              className="select input-otto"
-              id="facilityTraining"
-              value={facilityTraining}
-              onChange={(event) => setFacilityTraining(event.target.value)}
-              required
-            >
-              <option value="">Select facility</option>
-              {facilities.map((item) => (
-                <option key={item} value={item}>{item}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              className="input input-otto"
-              id="facilityTraining"
-              type="text"
-              placeholder={companyId.trim() ? "No facilities found for this Company ID" : "Enter Company ID first"}
-              value={facilityTraining}
-              onChange={(event) => setFacilityTraining(event.target.value)}
-              required
-            />
-          )}
-          <div className="helper">Must match the approved facility name for this Company ID.</div>
+      <div className="field">
+        <label htmlFor="organizationalName">Organizational name</label>
+        {needsOrgChoice ? (
+          <select
+            className="select input-otto"
+            id="organizationalName"
+            value={organizationalName}
+            onChange={(event) => setOrganizationalName(event.target.value)}
+            required
+          >
+            <option value="">Select organization</option>
+            {organizations.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            className="input input-otto"
+            id="organizationalName"
+            type="text"
+            placeholder={orgPlaceholder}
+            value={organizationalName}
+            readOnly
+            required
+          />
+        )}
+        <div className="helper">
+          {needsOrgChoice
+            ? "Choose the organization for this Company ID."
+            : "Filled automatically when the Company ID matches the roster."}
         </div>
-      )}
+      </div>
 
       <button className="btn btn-otto" type="submit" disabled={busy}>
         {busy ? "Registering…" : "Register"}

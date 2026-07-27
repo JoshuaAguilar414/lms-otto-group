@@ -1,50 +1,80 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import AdmZip from "adm-zip";
 import { XMLParser } from "fast-xml-parser";
+import { deleteCourseFiles, localCourseStorageRoot, replaceCourseFiles } from "@/lib/course-storage";
 
+/** @deprecated Prefer localCourseStorageRoot / storageBackend from course-storage */
 export function courseStorageRoot(): string {
-  return process.env.COURSE_STORAGE_DIR || "/tmp/otto-lms-courses";
+  return localCourseStorageRoot();
+}
+
+export async function ensureCourseStorageRoot(): Promise<string> {
+  const root = localCourseStorageRoot();
+  await fs.mkdir(root, { recursive: true });
+  return root;
 }
 
 export async function extractScormPackage(buffer: Buffer, courseId: string): Promise<{ launchPath: string }> {
-  const targetRoot = path.join(courseStorageRoot(), courseId);
-  await fs.rm(targetRoot, { recursive: true, force: true });
-  await fs.mkdir(targetRoot, { recursive: true });
+  const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), `otto-scorm-${courseId}-`));
+  try {
+    const zip = new AdmZip(buffer);
+    const entries = zip.getEntries();
+    if (!entries.length) throw new Error("The uploaded ZIP package is empty");
 
-  const zip = new AdmZip(buffer);
-  const entries = zip.getEntries();
-  if (!entries.length) throw new Error("The uploaded ZIP package is empty");
+    const files: Array<{ relativePath: string; body: Buffer }> = [];
 
-  for (const entry of entries) {
-    const normalized = entry.entryName.replaceAll("\\", "/").replace(/^\/+/, "");
-    if (!normalized || normalized.split("/").includes("..")) {
-      throw new Error("The SCORM package contains an unsafe file path");
-    }
-    const absolute = path.resolve(targetRoot, normalized);
-    if (!absolute.startsWith(path.resolve(targetRoot) + path.sep) && absolute !== path.resolve(targetRoot)) {
-      throw new Error("The SCORM package contains an unsafe file path");
-    }
-    if (entry.isDirectory) {
-      await fs.mkdir(absolute, { recursive: true });
-    } else {
+    for (const entry of entries) {
+      const normalized = entry.entryName.replaceAll("\\", "/").replace(/^\/+/, "");
+      if (!normalized || normalized.split("/").includes("..")) {
+        throw new Error("The SCORM package contains an unsafe file path");
+      }
+      const absolute = path.resolve(tempRoot, normalized);
+      if (!absolute.startsWith(path.resolve(tempRoot) + path.sep) && absolute !== path.resolve(tempRoot)) {
+        throw new Error("The SCORM package contains an unsafe file path");
+      }
+      if (entry.isDirectory) {
+        await fs.mkdir(absolute, { recursive: true });
+        continue;
+      }
       await fs.mkdir(path.dirname(absolute), { recursive: true });
-      await fs.writeFile(absolute, entry.getData());
+      const body = entry.getData();
+      await fs.writeFile(absolute, body);
+      files.push({ relativePath: normalized, body });
     }
-  }
 
-  const manifestPath = await findManifest(targetRoot);
-  if (!manifestPath) throw new Error("imsmanifest.xml was not found in this ZIP package");
-  const launchHref = await readLaunchHref(manifestPath);
-  const manifestDirectory = path.dirname(manifestPath);
-  const launchAbsolute = path.resolve(manifestDirectory, launchHref);
-  const storageAbsolute = path.resolve(targetRoot);
-  if (!launchAbsolute.startsWith(storageAbsolute + path.sep)) {
-    throw new Error("The SCORM launch file points outside the uploaded package");
+    const manifestPath = await findManifest(tempRoot);
+    if (!manifestPath) throw new Error("imsmanifest.xml was not found in this ZIP package");
+    const launchHref = await readLaunchHref(manifestPath);
+    const manifestDirectory = path.dirname(manifestPath);
+    const launchAbsolute = path.resolve(manifestDirectory, launchHref);
+    const storageAbsolute = path.resolve(tempRoot);
+    if (!launchAbsolute.startsWith(storageAbsolute + path.sep)) {
+      throw new Error("The SCORM launch file points outside the uploaded package");
+    }
+    await fs.access(launchAbsolute);
+    await injectScormProgressBridgeIntoPackage(tempRoot);
+
+    // Re-read files after HTML patching so R2/local get the patched content.
+    const patchedFiles: Array<{ relativePath: string; body: Buffer }> = [];
+    for (const file of files) {
+      const absolute = path.join(tempRoot, file.relativePath);
+      patchedFiles.push({
+        relativePath: file.relativePath,
+        body: await fs.readFile(absolute)
+      });
+    }
+
+    await replaceCourseFiles(courseId, patchedFiles);
+    return { launchPath: path.relative(tempRoot, launchAbsolute).replaceAll(path.sep, "/") };
+  } finally {
+    await fs.rm(tempRoot, { recursive: true, force: true });
   }
-  await fs.access(launchAbsolute);
-  await injectScormProgressBridgeIntoPackage(targetRoot);
-  return { launchPath: path.relative(targetRoot, launchAbsolute).replaceAll(path.sep, "/") };
+}
+
+export async function removeScormPackage(courseId: string): Promise<void> {
+  await deleteCourseFiles(courseId);
 }
 
 const LOCAL_SCORM_INTERFACE = "/mindsmith-scorm-interface.js";
