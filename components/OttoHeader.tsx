@@ -53,13 +53,21 @@ export default function OttoHeader({
   return (
     <header className={`otto-header${menuOpen ? " otto-header-open" : ""}`}>
       <div className="otto-header-inner">
-        <a
-          href={OTTO_GROUP_HOME}
-          className="otto-header-logo"
-          onClick={() => setMenuOpen(false)}
-        >
-          <OttoLogo className="otto-logo-header" />
-        </a>
+        <div className="otto-header-brand">
+          <a
+            href={OTTO_GROUP_HOME}
+            className="otto-header-logo"
+            onClick={() => setMenuOpen(false)}
+          >
+            <OttoLogo className="otto-logo-header" />
+          </a>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/otto-partners-logos.png"
+            alt="OTTO, bonprix, Witt-Gruppe, Crate&Barrel"
+            className="otto-header-partners"
+          />
+        </div>
 
         <div className="otto-header-search">
           <form className="otto-header-search-form" onSubmit={submitSearch}>
