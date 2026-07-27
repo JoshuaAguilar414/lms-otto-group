@@ -9,7 +9,7 @@ export default function OttoLogo({
     // eslint-disable-next-line @next/next/no-img-element
     <img
       className={`otto-logo ${className}`.trim()}
-      src="/otto-group-logo.png"
+      src="https://static.ottogroup.com/wLayout22/wGlobal/layout/images/logo.svg"
       alt={title}
       width={340}
       height={96}
