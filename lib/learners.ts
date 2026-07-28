@@ -200,3 +200,66 @@ export class InviteError extends Error {
     this.status = status;
   }
 }
+
+export type UserView = Omit<InviteResult["user"], "status"> & { status: UserDocument["status"] };
+
+export type UpdateUserProfileInput = {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  entity?: string;
+};
+
+function toUserView(document: UserDocument, id: ObjectId): UserView {
+  return {
+    id: id.toHexString(),
+    firstName: document.firstName,
+    lastName: document.lastName,
+    email: document.email,
+    entity: document.entity,
+    companyId: document.companyId,
+    stakeholderGroup: document.stakeholderGroup,
+    facilityTraining: document.facilityTraining,
+    role: document.role,
+    status: document.status,
+    createdAt: document.createdAt.toISOString()
+  };
+}
+
+function resolveProfileNames(input: UpdateUserProfileInput): { firstName: string; lastName: string } | null {
+  if (input.name) return splitFullName(input.name);
+  if (input.firstName && input.lastName) {
+    return { firstName: input.firstName.trim(), lastName: input.lastName.trim() };
+  }
+  return null;
+}
+
+export async function updateUserProfile(
+  db: Db,
+  userId: ObjectId,
+  input: UpdateUserProfileInput
+): Promise<UserView> {
+  const user = await db.collection<UserDocument>("users").findOne({ _id: userId });
+  if (!user) throw new InviteError("User not found", 404);
+
+  const names = resolveProfileNames(input);
+  const updates: Partial<UserDocument> = { updatedAt: new Date() };
+
+  if (names) {
+    updates.firstName = names.firstName;
+    updates.lastName = names.lastName;
+  }
+  if (input.entity !== undefined) {
+    if (user.role === "LEARNER") {
+      throw new InviteError("Learner organization details are tied to the participant roster and cannot be changed here.", 400);
+    }
+    updates.entity = input.entity.trim();
+  }
+  if (Object.keys(updates).length === 1) {
+    throw new InviteError("Provide at least one field to update.", 400);
+  }
+
+  await db.collection<UserDocument>("users").updateOne({ _id: userId }, { $set: updates });
+  const updated = await db.collection<UserDocument>("users").findOne({ _id: userId });
+  return toUserView(updated!, userId);
+}

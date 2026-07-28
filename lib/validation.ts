@@ -106,3 +106,23 @@ export const resetPasswordSchema = activateSchema;
 export const progressSchema = z.object({
   values: z.record(z.string(), z.string()).default({})
 });
+
+export const updateUserProfileSchema = z.object({
+  name: z.string().trim().min(2).max(200).optional(),
+  firstName: z.string().trim().min(1).max(100).optional(),
+  lastName: z.string().trim().min(1).max(100).optional(),
+  entity: z.string().trim().min(1).max(200).optional()
+}).superRefine((data, ctx) => {
+  const hasFullName = Boolean(data.name);
+  const hasFirstLast = Boolean(data.firstName && data.lastName);
+  const hasPartialFirstLast = Boolean(data.firstName || data.lastName);
+  const hasEntity = Boolean(data.entity);
+
+  if (hasPartialFirstLast && !hasFirstLast) {
+    ctx.addIssue({ code: "custom", path: ["lastName"], message: "Enter both first and last name." });
+    return;
+  }
+  if (!hasFullName && !hasFirstLast && !hasEntity) {
+    ctx.addIssue({ code: "custom", path: ["name"], message: "Provide at least one field to update." });
+  }
+});

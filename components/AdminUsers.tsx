@@ -36,6 +36,9 @@ export default function AdminUsers({
   const [stakeholderGroup, setStakeholderGroup] = useState<StakeholderGroup | "">("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [roleFilter, setRoleFilter] = useState("ALL");
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const editing = users.find((item) => item.id === editingId) || null;
 
   const getSearchValues = useCallback(
     (item: UserView) => [
@@ -142,7 +145,40 @@ export default function AdminUsers({
       return;
     }
     setUsers((items) => items.filter((item) => item.id !== user.id));
+    if (editingId === user.id) setEditingId(null);
     setMessage(`${user.firstName} ${user.lastName} was removed.`);
+  }
+
+  function canEditUser(user: UserView) {
+    return permissions.canCreateStaff || user.role === "LEARNER";
+  }
+
+  async function saveUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editing) return;
+    setError("");
+    setMessage("");
+
+    const form = new FormData(event.currentTarget);
+    const payload = editing.role === "LEARNER"
+      ? { name: String(form.get("name") || "").trim() }
+      : {
+          firstName: String(form.get("firstName") || "").trim(),
+          lastName: String(form.get("lastName") || "").trim(),
+          entity: String(form.get("entity") || "").trim()
+        };
+
+    const response = await fetch(`/api/admin/users/${editing.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!response.ok) return setError(data.error || "Could not update user");
+
+    setUsers((current) => current.map((item) => (item.id === editing.id ? data.user : item)));
+    setMessage(`${data.user.firstName} ${data.user.lastName} has been updated.`);
+    setEditingId(null);
   }
 
   return (
@@ -225,6 +261,45 @@ export default function AdminUsers({
         </form>
       </div>
 
+      {editing && canEditUser(editing) && (
+        <form className="card" onSubmit={saveUser} key={editing.id}>
+          <h2>Edit user</h2>
+          <p className="helper">
+            Correct a misspelled name or update profile details. The user keeps their account and does not need to register again.
+          </p>
+          {editing.role === "LEARNER" ? (
+            <div className="field">
+              <label>Full name</label>
+              <input
+                className="input"
+                name="name"
+                defaultValue={`${editing.firstName} ${editing.lastName}`.trim()}
+                required
+              />
+            </div>
+          ) : (
+            <div className="grid two">
+              <div className="field">
+                <label>First name</label>
+                <input className="input" name="firstName" defaultValue={editing.firstName} required />
+              </div>
+              <div className="field">
+                <label>Last name</label>
+                <input className="input" name="lastName" defaultValue={editing.lastName} required />
+              </div>
+              <div className="field">
+                <label>Entity or company</label>
+                <input className="input" name="entity" defaultValue={editing.entity} required />
+              </div>
+            </div>
+          )}
+          <div className="actions">
+            <button className="btn" type="submit">Save changes</button>
+            <button className="btn secondary" type="button" onClick={() => setEditingId(null)}>Cancel</button>
+          </div>
+        </form>
+      )}
+
       <ListControls
         query={list.query}
         onQueryChange={list.setQuery}
@@ -286,6 +361,11 @@ export default function AdminUsers({
                 <td><span className={`badge ${item.status.toLowerCase()}`}>{item.status}</span></td>
                 <td>
                   <div className="actions">
+                    {canEditUser(item) && (
+                      <button className="btn secondary small" type="button" onClick={() => setEditingId(item.id)}>
+                        Edit
+                      </button>
+                    )}
                     {item.status === "INVITED" && (permissions.canCreateStaff || item.role === "LEARNER") && (
                       <>
                         <button className="btn small" type="button" onClick={() => void resendInvite(item)}>

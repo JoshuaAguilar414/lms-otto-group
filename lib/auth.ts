@@ -115,6 +115,10 @@ export function canManageUserStatus(actorRole: UserRole, targetRole: UserRole): 
   return actorRole === "COORDINATOR" && targetRole === "LEARNER";
 }
 
+export function canEditUser(actorRole: UserRole, targetRole: UserRole): boolean {
+  return canManageUserStatus(actorRole, targetRole);
+}
+
 export function canInviteRole(actorRole: UserRole, targetRole: UserRole): boolean {
   if (isFullAdmin(actorRole)) return true;
   return actorRole === "COORDINATOR" && targetRole === "LEARNER";
