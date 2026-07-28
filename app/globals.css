@@ -162,6 +162,94 @@ h1, h2, h3, h4, h5, h6 { color: var(--otto-red); }
 .otto-header-link:hover,
 .otto-header-link.active { border-bottom-color: var(--otto-red); }
 .otto-header-signout { display: flex; align-items: center; }
+.otto-header-user { display: flex; align-items: center; }
+.otto-user-menu { position: relative; }
+.otto-user-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 999px;
+}
+.otto-user-menu-trigger:hover .otto-user-avatar,
+.otto-user-menu-trigger[aria-expanded="true"] .otto-user-avatar {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(238, 0, 32, 0.35);
+}
+.otto-user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--otto-red);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.otto-user-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 260px;
+  background: #fff;
+  border: 1px solid rgba(238, 0, 32, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+  padding: 8px 0;
+  z-index: 60;
+}
+.otto-user-menu-dropdown-head,
+.otto-user-menu-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid rgba(238, 0, 32, 0.08);
+}
+.otto-user-menu-name {
+  color: var(--otto-red);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.otto-user-menu-email {
+  color: var(--otto-red-muted);
+  font-size: 13px;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.otto-user-menu-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--otto-red);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  padding: 11px 16px;
+  cursor: pointer;
+}
+.otto-user-menu-item:hover:not(:disabled),
+.otto-user-menu-item.active {
+  background: rgba(238, 0, 32, 0.06);
+  text-decoration: none;
+}
+.otto-user-menu-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.otto-user-menu-panel {
+  padding-top: 12px;
+  border-top: 1px solid rgba(157, 22, 46, .08);
+}
+.otto-header-panel-user { padding-top: 12px; }
 .otto-signout-btn {
   border: 0;
   background: transparent;
@@ -637,7 +725,7 @@ tr:last-child td { border-bottom: 0; }
 @media (max-width: 900px) {
   .otto-header-search { display: none; }
   .otto-header-nav,
-  .otto-header-signout { display: none; }
+  .otto-header-user { display: none; }
   .otto-header-menu-btn { display: inline-flex; }
   .otto-header-open .otto-header-backdrop { display: block; }
   .otto-footer-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }

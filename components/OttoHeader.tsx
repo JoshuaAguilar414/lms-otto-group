@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import LogoutButton from "@/components/LogoutButton";
+import UserMenu from "@/components/UserMenu";
 import OttoLogo from "@/components/OttoLogo";
 
 type NavItem = { href: string; label: string };
+type HeaderUser = { firstName: string; lastName: string; email: string };
 
 const OTTO_GROUP_HOME = "https://www.ottogroup.com/en/";
 const OTTO_GROUP_SEARCH = "https://www.ottogroup.com/en/search/";
@@ -22,9 +23,11 @@ function SearchIcon() {
 
 export default function OttoHeader({
   items,
+  user,
   showSignOut = true
 }: {
   items: NavItem[];
+  user?: HeaderUser;
   showSignOut?: boolean;
 }) {
   const pathname = usePathname();
@@ -98,9 +101,9 @@ export default function OttoHeader({
             ))}
           </nav>
 
-          {showSignOut && (
-            <div className="otto-header-signout">
-              <LogoutButton />
+          {showSignOut && user && (
+            <div className="otto-header-user">
+              <UserMenu user={user} />
             </div>
           )}
 
@@ -145,9 +148,9 @@ export default function OttoHeader({
             {item.label}
           </Link>
         ))}
-        {showSignOut && (
-          <div className="otto-header-panel-signout">
-            <LogoutButton />
+        {showSignOut && user && (
+          <div className="otto-header-panel-user">
+            <UserMenu user={user} variant="panel" />
           </div>
         )}
       </nav>

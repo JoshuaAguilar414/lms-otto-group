@@ -10,17 +10,15 @@ export default function Shell({ user, children }: { user: SessionUser; children:
         { href: "/admin/participants", label: "Participants" },
         { href: "/admin/users", label: "Users" },
         { href: "/admin/courses", label: "Courses" },
-        { href: "/admin/reports", label: "Reports" },
-        { href: "/dashboard/profile", label: "Profile" }
+        { href: "/admin/reports", label: "Reports" }
       ]
     : [
         { href: "/dashboard", label: "Overview" },
-        { href: "/dashboard/courses", label: "My courses" },
-        { href: "/dashboard/profile", label: "Profile" }
+        { href: "/dashboard/courses", label: "My courses" }
       ];
 
   return (
-    <OttoPageShell items={items}>
+    <OttoPageShell items={items} user={user}>
       {children}
     </OttoPageShell>
   );
