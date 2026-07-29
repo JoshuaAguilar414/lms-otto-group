@@ -94,9 +94,8 @@ h1, h2, h3, h4, h5, h6 { color: var(--otto-red); }
 .otto-logo-header { width: 168px; height: auto; display: block; }
 .otto-header-partners {
   display: block;
-  width: 280px;
+  width: 330px;
   height: auto;
-  margin-left: -15px;
 }
 .otto-header-search {
   width: 196px;
@@ -786,7 +785,7 @@ tr:last-child td { border-bottom: 0; }
     --otto-header-height: 108px;
   }
   .otto-logo-header { width: 132px; }
-  .otto-header-partners { width: 300px; margin-left: -15px; }
+  .otto-header-partners { width: 300px; }
   .otto-header-brand { gap: 8px; }
   .otto-header-actions { gap: 16px; }
   .otto-footer-inner { padding-top: 24px; padding-bottom: 20px; }
