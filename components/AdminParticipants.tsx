@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
 import ListControls from "@/components/ListControls";
+import { SPREADSHEET_ACCEPT } from "@/lib/spreadsheet";
 import { useFilteredPagination } from "@/lib/useFilteredPagination";
 
 interface ParticipantView {
@@ -38,6 +39,7 @@ export default function AdminParticipants({
   const [stakeholderFilter, setStakeholderFilter] = useState("ALL");
   const [countryFilter, setCountryFilter] = useState("ALL");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const countries = useMemo(
     () => [...new Set(participants.map((item) => item.country).filter(Boolean))].sort(),
@@ -70,6 +72,55 @@ export default function AdminParticipants({
   const facilities = participants.filter((item) => item.stakeholderGroup === "Facility").length;
   const partners = participants.filter((item) => item.stakeholderGroup === "Business Partner").length;
   const editing = participants.find((item) => item.id === editingId) || null;
+  const pageIds = list.pageItems.map((item) => item.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllPage() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  async function bulkRemoveSelected() {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    const confirmed = window.confirm(`Remove ${ids.length} selected organization(s) from the approved roster?`);
+    if (!confirmed) return;
+    setError("");
+    setMessage("");
+    const response = await fetch("/api/admin/participants/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids })
+    });
+    const data = await response.json();
+    if (!response.ok) return setError(data.error || "Bulk remove failed");
+    const removed = new Set<string>(data.removedIds || []);
+    setParticipants((items) => items.filter((item) => !removed.has(item.id)));
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      removed.forEach((id) => next.delete(id));
+      return next;
+    });
+    if (editingId && removed.has(editingId)) setEditingId(null);
+    setMessage(
+      `Removed ${data.removed} organization(s)` +
+      (data.skipped ? `; ${data.skipped} could not be removed.` : ".") +
+      (data.errors?.length ? ` First issues: ${data.errors.slice(0, 3).join(" | ")}` : "")
+    );
+  }
 
   async function refreshParticipants() {
     const refreshed = await fetch("/api/admin/participants");
@@ -184,13 +235,13 @@ export default function AdminParticipants({
             <button className="btn">Add to roster</button>
           </form>
           <form className="card" onSubmit={importCsv}>
-            <h2>Import roster CSV</h2>
+            <h2>Import roster</h2>
             <p className="helper">
-              Bulk import from the VECTRA participant list. Headers: Stakeholder, ID, Name, Belongs to BP, Country, Topic, Nominated Provider.
+              Bulk import from the VECTRA participant list (CSV or XLSX). Headers: Stakeholder, ID, Name, Belongs to BP, Country, Topic, Nominated Provider.
             </p>
             <div className="field">
-              <label>CSV file</label>
-              <input className="input" name="file" type="file" accept=".csv,text/csv" required />
+              <label>CSV or XLSX file</label>
+              <input className="input" name="file" type="file" accept={SPREADSHEET_ACCEPT} required />
             </div>
             <button className="btn">Import roster</button>
           </form>
@@ -257,10 +308,34 @@ export default function AdminParticipants({
         )}
       />
 
+      {canManage && selectedIds.size > 0 && (
+        <div className="card bulk-actions">
+          <span className="helper">{selectedIds.size} selected</span>
+          <div className="actions">
+            <button className="btn danger small" type="button" onClick={() => void bulkRemoveSelected()}>
+              Remove selected
+            </button>
+            <button className="btn secondary small" type="button" onClick={() => setSelectedIds(new Set())}>
+              Clear selection
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
+              {canManage && (
+                <th style={{ width: 40 }}>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all on this page"
+                    checked={allPageSelected}
+                    onChange={toggleSelectAllPage}
+                  />
+                </th>
+              )}
               <th>Stakeholder</th>
               <th>Company ID</th>
               <th>Name</th>
@@ -273,10 +348,20 @@ export default function AdminParticipants({
           </thead>
           <tbody>
             {!list.pageItems.length && (
-              <tr><td colSpan={canManage ? 8 : 7}>No organizations match the current filters.</td></tr>
+              <tr><td colSpan={canManage ? 9 : 7}>No organizations match the current filters.</td></tr>
             )}
             {list.pageItems.map((item) => (
               <tr key={item.id}>
+                {canManage && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${item.name}`}
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelected(item.id)}
+                    />
+                  </td>
+                )}
                 <td><span className="badge">{item.stakeholderGroup}</span></td>
                 <td>{item.companyId}</td>
                 <td>{item.name}</td>

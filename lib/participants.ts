@@ -22,6 +22,12 @@ function parseStakeholder(value: string): StakeholderGroup | null {
 
 export function parseParticipantCsv(text: string): Array<Omit<ParticipantDocument, "_id" | "createdAt" | "updatedAt" | "active">> {
   const records = parse(text, { columns: true, skip_empty_lines: true, trim: true, bom: true }) as Record<string, string>[];
+  return parseParticipantRows(records);
+}
+
+export function parseParticipantRows(
+  records: Record<string, string>[]
+): Array<Omit<ParticipantDocument, "_id" | "createdAt" | "updatedAt" | "active">> {
   const rows: Array<Omit<ParticipantDocument, "_id" | "createdAt" | "updatedAt" | "active">> = [];
 
   for (const row of records) {

@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
 import ListControls from "@/components/ListControls";
+import { SPREADSHEET_ACCEPT } from "@/lib/spreadsheet";
 import { useFilteredPagination } from "@/lib/useFilteredPagination";
 
 interface UserView {
@@ -37,8 +38,7 @@ export default function AdminUsers({
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const editing = users.find((item) => item.id === editingId) || null;
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const getSearchValues = useCallback(
     (item: UserView) => [
@@ -64,6 +64,58 @@ export default function AdminUsers({
   );
 
   const list = useFilteredPagination(filteredBySelects, getSearchValues, { initialPageSize: 10 });
+  const editing = users.find((item) => item.id === editingId) || null;
+  const pageIds = list.pageItems.map((item) => item.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllPage() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  async function bulkRemoveSelected() {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    const confirmed = window.confirm(
+      `Remove ${ids.length} selected user(s)? This permanently deletes them and their course assignments.`
+    );
+    if (!confirmed) return;
+    setError("");
+    setMessage("");
+    const response = await fetch("/api/admin/users/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids })
+    });
+    const data = await response.json();
+    if (!response.ok) return setError(data.error || "Bulk remove failed");
+    const removed = new Set<string>(data.removedIds || []);
+    setUsers((items) => items.filter((item) => !removed.has(item.id)));
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      removed.forEach((id) => next.delete(id));
+      return next;
+    });
+    if (editingId && removed.has(editingId)) setEditingId(null);
+    setMessage(
+      `Removed ${data.removed} user(s)` +
+      (data.skipped ? `; ${data.skipped} could not be removed.` : ".") +
+      (data.errors?.length ? ` First issues: ${data.errors.slice(0, 3).join(" | ")}` : "")
+    );
+  }
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,7 +146,7 @@ export default function AdminUsers({
     const form = new FormData(formElement);
     const response = await fetch("/api/admin/users/import", { method: "POST", body: form });
     const data = await response.json();
-    if (!response.ok) return setError(data.error || "CSV import failed");
+    if (!response.ok) return setError(data.error || "Import failed");
     setMessage(
       `Imported ${data.created} users; ${data.skipped} rows were skipped.` +
       (data.errors?.length ? ` First issues: ${data.errors.slice(0, 3).join(" | ")}` : "")
@@ -251,12 +303,12 @@ export default function AdminUsers({
         </form>
 
         <form className="card" onSubmit={importCsv}>
-          <h2>Import learner CSV</h2>
+          <h2>Import learners</h2>
           <p className="muted">
-            Required headers: First Name, Last Name, Corporate Email, Company ID, Stakeholder Group, Organizational Name.
+            Upload CSV or XLSX. Required headers: First Name, Last Name, Corporate Email, Company ID, Stakeholder Group, Organizational Name.
             Company ID and Stakeholder Group must match the participant roster.
           </p>
-          <div className="field"><label>CSV file</label><input className="input" name="file" type="file" accept=".csv,text/csv" required /></div>
+          <div className="field"><label>CSV or XLSX file</label><input className="input" name="file" type="file" accept={SPREADSHEET_ACCEPT} required /></div>
           <button className="btn">Import users</button>
         </form>
       </div>
@@ -334,10 +386,34 @@ export default function AdminUsers({
         )}
       />
 
+      {permissions.canRemoveUsers && selectedIds.size > 0 && (
+        <div className="card bulk-actions">
+          <span className="helper">{selectedIds.size} selected</span>
+          <div className="actions">
+            <button className="btn danger small" type="button" onClick={() => void bulkRemoveSelected()}>
+              Remove selected
+            </button>
+            <button className="btn secondary small" type="button" onClick={() => setSelectedIds(new Set())}>
+              Clear selection
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
+              {permissions.canRemoveUsers && (
+                <th style={{ width: 40 }}>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all on this page"
+                    checked={allPageSelected}
+                    onChange={toggleSelectAllPage}
+                  />
+                </th>
+              )}
               <th>Name</th>
               <th>Email</th>
               <th>Entity</th>
@@ -349,9 +425,21 @@ export default function AdminUsers({
             </tr>
           </thead>
           <tbody>
-            {!list.pageItems.length && <tr><td colSpan={8}>No users match the current filters.</td></tr>}
+            {!list.pageItems.length && (
+              <tr><td colSpan={permissions.canRemoveUsers ? 9 : 8}>No users match the current filters.</td></tr>
+            )}
             {list.pageItems.map((item) => (
               <tr key={item.id}>
+                {permissions.canRemoveUsers && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${item.firstName} ${item.lastName}`}
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelected(item.id)}
+                    />
+                  </td>
+                )}
                 <td><strong>{item.firstName} {item.lastName}</strong></td>
                 <td>{item.email}</td>
                 <td>{item.entity}</td>

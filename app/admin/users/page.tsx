@@ -25,8 +25,8 @@ export default async function AdminUsersPage() {
       <h1 className="page-title">Learners and users</h1>
       <p className="page-subtitle">
         {canCreateStaff(user.role)
-          ? "Create learners or staff, import CSV, and manage account status."
-          : "Invite learners, import learner CSV, and activate or deactivate learner accounts."}
+          ? "Create learners or staff, import CSV or XLSX, and manage account status."
+          : "Invite learners, import learner CSV or XLSX, and activate or deactivate learner accounts."}
       </p>
       <AdminUsers
         initialUsers={data}

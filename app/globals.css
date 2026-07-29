@@ -721,6 +721,7 @@ tr:last-child td { border-bottom: 0; }
 .list-controls-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
 .list-controls-filters { display: grid; gap: 10px; }
 .list-controls-footer { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; color: var(--otto-red-muted); }
+.bulk-actions { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
 
 @media (max-width: 900px) {
   .otto-header-search { display: none; }

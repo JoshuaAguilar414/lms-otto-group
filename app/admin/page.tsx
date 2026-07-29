@@ -47,13 +47,13 @@ export default async function AdminPage() {
           <ol className="muted" style={{ marginBottom: 0, paddingLeft: 18, lineHeight: 1.7 }}>
             <li>Import the VECTRA participant roster (Facilities / Business Partners + Company IDs).</li>
             <li>Upload the Freely Chosen Employment SCORM 1.2 course.</li>
-            <li>Learners self-register with an approved Company ID, or import a learner email CSV.</li>
+            <li>Learners self-register with an approved Company ID, or import a learner CSV or XLSX file.</li>
             <li>Assign the course (auto-assigned on registration when the course title matches the topic).</li>
             <li>Export progress reports as training completes.</li>
           </ol>
         ) : (
           <ol className="muted" style={{ marginBottom: 0, paddingLeft: 18, lineHeight: 1.7 }}>
-            <li>Invite learners with an approved Company ID, or import learner CSV.</li>
+            <li>Invite learners with an approved Company ID, or import learner CSV or XLSX.</li>
             <li>Upload or update SCORM 1.2 courses as needed.</li>
             <li>Assign courses to learners.</li>
             <li>Review and export progress reports.</li>

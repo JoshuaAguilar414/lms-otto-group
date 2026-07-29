@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { getDb } from "../lib/db";
-import { parseParticipantCsv, upsertParticipants } from "../lib/participants";
+import { parseParticipantRows, upsertParticipants } from "../lib/participants";
+import { parseSpreadsheetBuffer } from "../lib/spreadsheet";
 
 async function main() {
   const filePath = resolve(process.cwd(), process.argv[2] || "sample-participants.csv");
-  const rows = parseParticipantCsv(readFileSync(filePath, "utf8"));
+  const records = parseSpreadsheetBuffer(readFileSync(filePath), filePath);
+  const rows = parseParticipantRows(records);
   if (!rows.length) throw new Error(`No participant rows found in ${filePath}`);
   const db = await getDb();
   const result = await upsertParticipants(db, rows);

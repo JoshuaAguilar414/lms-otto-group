@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireFullAdminApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
-import { parseParticipantCsv, upsertParticipants } from "@/lib/participants";
+import { parseParticipantRows, upsertParticipants } from "@/lib/participants";
+import { parseSpreadsheetFile, SpreadsheetParseError } from "@/lib/spreadsheet";
 
 export async function POST(request: Request) {
   const admin = await requireFullAdminApi();
@@ -9,10 +10,17 @@ export async function POST(request: Request) {
 
   const form = await request.formData();
   const file = form.get("file");
-  if (!(file instanceof File)) return NextResponse.json({ error: "Select a CSV file" }, { status: 400 });
-  if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: "CSV file is too large" }, { status: 400 });
+  if (!(file instanceof File)) return NextResponse.json({ error: "Select a CSV or XLSX file" }, { status: 400 });
 
-  const rows = parseParticipantCsv(await file.text());
+  let records: Record<string, string>[];
+  try {
+    records = await parseSpreadsheetFile(file);
+  } catch (error) {
+    const message = error instanceof SpreadsheetParseError ? error.message : "Could not read spreadsheet";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  const rows = parseParticipantRows(records);
   if (!rows.length) {
     return NextResponse.json({
       error: "No valid rows found. Required columns: Stakeholder, ID, Name, Belongs to BP, Country, Topic, Nominated Provider."

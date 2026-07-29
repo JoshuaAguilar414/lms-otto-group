@@ -1,8 +1,8 @@
-import { parse } from "csv-parse/sync";
 import { NextResponse } from "next/server";
 import { isApiError, requireApiUser } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { InviteError, inviteLearner } from "@/lib/learners";
+import { parseSpreadsheetFile, SpreadsheetParseError } from "@/lib/spreadsheet";
 import type { StakeholderGroup } from "@/lib/types";
 
 export async function POST(request: Request) {
@@ -10,15 +10,15 @@ export async function POST(request: Request) {
   if (isApiError(admin)) return admin;
   const form = await request.formData();
   const file = form.get("file");
-  if (!(file instanceof File)) return NextResponse.json({ error: "Select a CSV file" }, { status: 400 });
-  if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: "CSV file is too large" }, { status: 400 });
+  if (!(file instanceof File)) return NextResponse.json({ error: "Select a CSV or XLSX file" }, { status: 400 });
 
-  const records = parse(await file.text(), {
-    columns: true,
-    skip_empty_lines: true,
-    trim: true,
-    bom: true
-  }) as Record<string, string>[];
+  let records: Record<string, string>[];
+  try {
+    records = await parseSpreadsheetFile(file);
+  } catch (error) {
+    const message = error instanceof SpreadsheetParseError ? error.message : "Could not read spreadsheet";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   const db = await getDb();
   let created = 0;

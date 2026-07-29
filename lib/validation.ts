@@ -97,6 +97,10 @@ export const bulkAssignSchema = z.object({
   { message: "Select learners or a filter for bulk assignment." }
 );
 
+export const bulkDeleteSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(200)
+});
+
 export const forgotPasswordSchema = z.object({
   email: z.email().transform((value) => value.trim().toLowerCase())
 });
