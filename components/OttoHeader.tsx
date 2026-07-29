@@ -67,7 +67,7 @@ export default function OttoHeader({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/otto-partners-logos.png"
-            alt="OTTO, bonprix, Witt-Gruppe, Crate&Barrel"
+            alt="bonprix, OTTO, Crate&Barrel, Witt-Gruppe"
             className="otto-header-partners"
           />
         </div>

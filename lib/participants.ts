@@ -6,6 +6,12 @@ export function normalizeCompanyId(value: string): string {
   return value.trim();
 }
 
+export function normalizeNominatedProvider(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase() === "vectra") return "VECTRA";
+  return trimmed;
+}
+
 function pick(row: Record<string, string>, names: string[]): string {
   for (const name of names) {
     if (row[name]?.trim()) return row[name].trim();
@@ -42,7 +48,7 @@ export function parseParticipantRows(
       belongsToBp: pick(row, ["Belongs to BP", "Belongs to BP ", "belongsToBp", "Business Partner"]),
       country: pick(row, ["Country", "country"]),
       topic: pick(row, ["Topic", "topic"]) || "Freely Chosen Employment",
-      nominatedProvider: pick(row, ["Nominated Provider", "Provider", "nominatedProvider"]) || "VECTRA"
+      nominatedProvider: normalizeNominatedProvider(pick(row, ["Nominated Provider", "Provider", "nominatedProvider"]))
     });
   }
   return rows;

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { normalizeNominatedProvider } from "@/lib/participants";
 
 export const loginSchema = z.object({
   email: z.email().transform((value) => value.trim().toLowerCase()),
@@ -72,7 +73,7 @@ export const participantSchema = z.object({
   belongsToBp: z.string().trim().max(300).optional().default(""),
   country: z.string().trim().max(100).optional().default(""),
   topic: z.string().trim().max(200).optional().default("Freely Chosen Employment"),
-  nominatedProvider: z.string().trim().max(200).optional().default("VECTRA")
+  nominatedProvider: z.string().trim().max(200).optional().default("VECTRA").transform(normalizeNominatedProvider)
 });
 
 export const assignCourseSchema = z.object({

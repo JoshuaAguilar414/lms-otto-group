@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireApiUser, requireFullAdminApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
-import { normalizeCompanyId } from "@/lib/participants";
+import { normalizeCompanyId, normalizeNominatedProvider } from "@/lib/participants";
 import type { ParticipantDocument } from "@/lib/types";
 import { participantSchema } from "@/lib/validation";
 
@@ -14,7 +14,7 @@ function toView(item: ParticipantDocument) {
     belongsToBp: item.belongsToBp,
     country: item.country,
     topic: item.topic,
-    nominatedProvider: item.nominatedProvider
+    nominatedProvider: normalizeNominatedProvider(item.nominatedProvider)
   };
 }
 
@@ -43,8 +43,7 @@ export async function POST(request: Request) {
   const payload = {
     ...parsed.data,
     companyId: normalizeCompanyId(parsed.data.companyId),
-    topic: parsed.data.topic || "Freely Chosen Employment",
-    nominatedProvider: parsed.data.nominatedProvider || "VECTRA"
+    topic: parsed.data.topic || "Freely Chosen Employment"
   };
 
   const db = await getDb();

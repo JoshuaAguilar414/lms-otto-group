@@ -2,6 +2,7 @@ import Shell from "@/components/Shell";
 import AdminParticipants from "@/components/AdminParticipants";
 import { canManageParticipantRoster, requirePageUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { normalizeNominatedProvider } from "@/lib/participants";
 import type { ParticipantDocument } from "@/lib/types";
 
 export default async function AdminParticipantsPage() {
@@ -21,7 +22,7 @@ export default async function AdminParticipantsPage() {
     belongsToBp: item.belongsToBp,
     country: item.country,
     topic: item.topic,
-    nominatedProvider: item.nominatedProvider
+    nominatedProvider: normalizeNominatedProvider(item.nominatedProvider)
   }));
 
   return (

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireFullAdminApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
-import { normalizeCompanyId } from "@/lib/participants";
+import { normalizeCompanyId, normalizeNominatedProvider } from "@/lib/participants";
 import type { ParticipantDocument } from "@/lib/types";
 import { safeObjectId } from "@/lib/utils";
 import { participantSchema } from "@/lib/validation";
@@ -15,7 +15,7 @@ function toView(item: ParticipantDocument) {
     belongsToBp: item.belongsToBp,
     country: item.country,
     topic: item.topic,
-    nominatedProvider: item.nominatedProvider
+    nominatedProvider: normalizeNominatedProvider(item.nominatedProvider)
   };
 }
 
@@ -35,8 +35,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ pa
   const payload = {
     ...parsed.data,
     companyId: normalizeCompanyId(parsed.data.companyId),
-    topic: parsed.data.topic || "Freely Chosen Employment",
-    nominatedProvider: parsed.data.nominatedProvider || "VECTRA"
+    topic: parsed.data.topic || "Freely Chosen Employment"
   };
 
   const db = await getDb();

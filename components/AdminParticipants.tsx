@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useMemo, useState } from "react";
 import ListControls from "@/components/ListControls";
 import { SPREADSHEET_ACCEPT } from "@/lib/spreadsheet";
+import { normalizeNominatedProvider } from "@/lib/participants";
 import { useFilteredPagination } from "@/lib/useFilteredPagination";
 
 interface ParticipantView {
@@ -136,7 +137,7 @@ export default function AdminParticipants({
       belongsToBp: String(form.get("belongsToBp") || "").trim(),
       country: String(form.get("country") || "").trim(),
       topic: String(form.get("topic") || "").trim() || "Freely Chosen Employment",
-      nominatedProvider: String(form.get("nominatedProvider") || "").trim() || "VECTRA"
+      nominatedProvider: normalizeNominatedProvider(String(form.get("nominatedProvider") || ""))
     };
   }
 
@@ -368,7 +369,7 @@ export default function AdminParticipants({
                 <td>{item.belongsToBp || "—"}</td>
                 <td>{item.country || "—"}</td>
                 <td>{item.topic || "—"}</td>
-                <td>{item.nominatedProvider || "—"}</td>
+                <td>{normalizeNominatedProvider(item.nominatedProvider) || "—"}</td>
                 {canManage && (
                   <td>
                     <div className="actions">
