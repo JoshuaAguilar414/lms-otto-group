@@ -1,16 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CheckboxFilter, ColumnManager, matchesSelected, uniqueSorted } from "@/components/DataTableControls";
 import ListControls from "@/components/ListControls";
 import { formatAssignmentStatus } from "@/lib/assignment-display";
+import { csvFilename, downloadCsv } from "@/lib/csv-download";
+import { getUserFieldValue, type FieldDefinitionView } from "@/lib/fields";
+import { matchesQuery } from "@/lib/pagination";
 import { useFilteredPagination } from "@/lib/useFilteredPagination";
 
-interface ReportRow {
+export interface ReportRow {
   id: string;
   learnerName: string;
   email: string;
   entity: string;
+  companyId: string;
+  stakeholderGroup: string;
+  belongsToBp: string;
   country: string;
+  topic: string;
+  nominatedProvider: string;
+  customFields: Record<string, string>;
   courseTitle: string;
   status: string;
   progress: number;
@@ -19,45 +29,127 @@ interface ReportRow {
   completedAt?: string;
 }
 
-export default function AdminReports({ rows }: { rows: ReportRow[] }) {
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [courseFilter, setCourseFilter] = useState("ALL");
-  const [countryFilter, setCountryFilter] = useState("ALL");
+const FIXED_COLUMNS = [
+  { key: "learnerName", label: "Learner" },
+  { key: "email", label: "Email" },
+  { key: "entity", label: "Entity" }
+];
 
-  const courses = useMemo(
-    () => [...new Set(rows.map((item) => item.courseTitle))].sort(),
-    [rows]
+const RESULT_COLUMNS = [
+  { key: "courseTitle", label: "Course" },
+  { key: "status", label: "Status" },
+  { key: "score", label: "Score" },
+  { key: "lastActivityAt", label: "Last activity" },
+  { key: "completedAt", label: "Completion" }
+];
+
+export default function AdminReports({
+  rows,
+  fields
+}: {
+  rows: ReportRow[];
+  fields: FieldDefinitionView[];
+}) {
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const filterableFields = fields.filter((field) => field.filterable);
+  const fieldColumns = fields
+    .filter((field) => field.key !== "name")
+    .map((field) => ({ key: field.key, label: field.label }));
+  const tableColumns = [...FIXED_COLUMNS, ...fieldColumns, ...RESULT_COLUMNS];
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => [
+    "learnerName",
+    "email",
+    "entity",
+    "country",
+    "topic",
+    "courseTitle",
+    "status",
+    "score",
+    "lastActivityAt",
+    "completedAt"
+  ].filter((key) => tableColumns.some((column) => column.key === key)));
+
+  function rowFieldValue(row: ReportRow, field: FieldDefinitionView): string {
+    return getUserFieldValue(row, field);
+  }
+
+  const afterNonCourseFilters = useMemo(
+    () => rows.filter((item) => {
+      if (!matchesSelected(item.status, filters.status || [])) return false;
+      return filterableFields.every((field) => matchesSelected(rowFieldValue(item, field), filters[field.key] || []));
+    }),
+    [rows, filters, filterableFields]
   );
-  const countries = useMemo(
-    () => [...new Set(rows.map((item) => item.country).filter(Boolean))].sort(),
-    [rows]
+
+  const courseOptions = useMemo(
+    () => uniqueSorted(afterNonCourseFilters.map((item) => item.courseTitle)),
+    [afterNonCourseFilters]
+  );
+
+  const courseFilter = useMemo(
+    () => (filters.courseTitle || []).filter((course) => courseOptions.includes(course)),
+    [filters.courseTitle, courseOptions]
   );
 
   const filtered = useMemo(
-    () => rows.filter((item) => {
-      if (statusFilter !== "ALL" && item.status !== statusFilter) return false;
-      if (courseFilter !== "ALL" && item.courseTitle !== courseFilter) return false;
-      if (countryFilter !== "ALL" && item.country !== countryFilter) return false;
-      return true;
-    }),
-    [rows, statusFilter, courseFilter, countryFilter]
+    () => afterNonCourseFilters.filter((item) => matchesSelected(item.courseTitle, courseFilter)),
+    [afterNonCourseFilters, courseFilter]
   );
 
   const list = useFilteredPagination(
     filtered,
-    (item) => [item.learnerName, item.email, item.entity, item.courseTitle, item.country, item.status],
+    (item) => [
+      item.learnerName,
+      item.email,
+      item.entity,
+      item.courseTitle,
+      item.country,
+      item.topic,
+      item.status,
+      ...fields.map((field) => rowFieldValue(item, field))
+    ],
     { initialPageSize: 25 }
   );
 
-  const csvHref = useMemo(() => {
-    const params = new URLSearchParams();
-    if (statusFilter !== "ALL") params.set("status", statusFilter);
-    if (courseFilter !== "ALL") params.set("course", courseFilter);
-    if (countryFilter !== "ALL") params.set("country", countryFilter);
-    if (list.query.trim()) params.set("q", list.query.trim());
-    const query = params.toString();
-    return `/api/admin/reports/csv${query ? `?${query}` : ""}`;
-  }, [statusFilter, courseFilter, countryFilter, list.query]);
+  const visibleTableColumns = tableColumns.filter((column) => visibleColumns.includes(column.key));
+
+  function cellValue(row: ReportRow, key: string): string {
+    if (key === "learnerName") return row.learnerName;
+    if (key === "email") return row.email;
+    if (key === "entity") return row.entity;
+    if (key === "courseTitle") return row.courseTitle;
+    if (key === "status") return formatAssignmentStatus(row.status);
+    if (key === "score") return row.score == null ? "" : String(row.score);
+    if (key === "lastActivityAt") return row.lastActivityAt ? new Date(row.lastActivityAt).toLocaleString() : "";
+    if (key === "completedAt") return row.completedAt ? new Date(row.completedAt).toLocaleDateString() : "";
+    const field = fields.find((item) => item.key === key);
+    return field ? rowFieldValue(row, field) : "";
+  }
+
+  function exportFilteredCsv() {
+    const searched = filtered.filter((item) =>
+      matchesQuery(
+        [
+          item.learnerName,
+          item.email,
+          item.entity,
+          item.courseTitle,
+          item.country,
+          item.topic,
+          item.status,
+          ...fields.map((field) => rowFieldValue(item, field))
+        ],
+        list.query
+      )
+    );
+    downloadCsv(
+      csvFilename("otto-lms-progress"),
+      visibleTableColumns,
+      searched.map((row) => Object.fromEntries(visibleTableColumns.map((column) => [column.key, cellValue(row, column.key)])))
+    );
+  }
+
+  const colSpan = visibleTableColumns.length || 1;
 
   return (
     <div className="grid">
@@ -66,7 +158,7 @@ export default function AdminReports({ rows }: { rows: ReportRow[] }) {
           <h1 className="page-title">Progress reports</h1>
           <p className="page-subtitle">Review active learners, completed courses, and outstanding requirements.</p>
         </div>
-        <a className="btn" href={csvHref}>Export CSV</a>
+        <button className="btn" type="button" onClick={exportFilteredCsv}>Export CSV</button>
       </div>
 
       <ListControls
@@ -80,30 +172,54 @@ export default function AdminReports({ rows }: { rows: ReportRow[] }) {
         onPageSizeChange={list.setPageSize}
         searchPlaceholder="Search learner, email, entity, course…"
         filters={(
-          <div className="list-controls-row">
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Status</label>
-              <select className="select" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); list.setPage(1); }}>
-                <option value="ALL">All</option>
-                <option value="NOT_STARTED">Not started</option>
-                <option value="IN_PROGRESS">In progress</option>
-                <option value="COMPLETED">Completed</option>
-              </select>
+          <div className="filter-toolbar">
+            <div className="checkbox-filter-bar">
+              <CheckboxFilter
+                label="Status"
+                options={["NOT_STARTED", "IN_PROGRESS", "COMPLETED"]}
+                optionLabels={{ NOT_STARTED: "Not started", IN_PROGRESS: "In progress", COMPLETED: "Completed" }}
+                selected={filters.status || []}
+                onChange={(next) => { setFilters((current) => ({ ...current, status: next })); list.setPage(1); }}
+              />
+              {filterableFields.map((field) => (
+                <CheckboxFilter
+                  key={field.key}
+                  label={field.label}
+                  options={uniqueSorted([
+                    ...(field.options || []),
+                    ...rows.map((item) => rowFieldValue(item, field))
+                  ])}
+                  selected={filters[field.key] || []}
+                  onChange={(next) => {
+                    setFilters((current) => {
+                      const updated = { ...current, [field.key]: next };
+                      if (field.key === "topic" && (updated.courseTitle || []).length) {
+                        const allowed = new Set(
+                          rows
+                            .filter((item) => matchesSelected(rowFieldValue(item, field), next))
+                            .map((item) => item.courseTitle)
+                        );
+                        updated.courseTitle = (updated.courseTitle || []).filter((course) => allowed.has(course));
+                      }
+                      return updated;
+                    });
+                    list.setPage(1);
+                  }}
+                />
+              ))}
+              <CheckboxFilter
+                label="Course"
+                options={courseOptions}
+                selected={courseFilter}
+                onChange={(next) => { setFilters((current) => ({ ...current, courseTitle: next })); list.setPage(1); }}
+              />
             </div>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Course</label>
-              <select className="select" value={courseFilter} onChange={(event) => { setCourseFilter(event.target.value); list.setPage(1); }}>
-                <option value="ALL">All</option>
-                {courses.map((course) => <option key={course} value={course}>{course}</option>)}
-              </select>
-            </div>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Country</label>
-              <select className="select" value={countryFilter} onChange={(event) => { setCountryFilter(event.target.value); list.setPage(1); }}>
-                <option value="ALL">All</option>
-                {countries.map((country) => <option key={country} value={country}>{country}</option>)}
-              </select>
-            </div>
+            <ColumnManager
+              columns={tableColumns}
+              visible={visibleColumns}
+              onChange={setVisibleColumns}
+              storageKey="otto-reports-columns"
+            />
           </div>
         )}
       />
@@ -112,35 +228,35 @@ export default function AdminReports({ rows }: { rows: ReportRow[] }) {
         <table>
           <thead>
             <tr>
-              <th>Learner</th>
-              <th>Entity</th>
-              <th>Course</th>
-              <th>Status</th>
-              <th>Score</th>
-              <th>Last activity</th>
-              <th>Completion</th>
+              {visibleTableColumns.map((column) => <th key={column.key}>{column.label}</th>)}
             </tr>
           </thead>
           <tbody>
             {!list.pageItems.length && (
-              <tr><td colSpan={7}>No rows match the current filters.</td></tr>
+              <tr><td colSpan={colSpan}>No rows match the current filters.</td></tr>
             )}
             {list.pageItems.map((row) => (
               <tr key={row.id}>
-                <td>
-                  <strong>{row.learnerName}</strong><br />
-                  <span className="helper">{row.email}</span>
-                </td>
-                <td>{row.entity}</td>
-                <td>{row.courseTitle}</td>
-                <td>
-                  <span className={`badge ${row.status === "COMPLETED" ? "completed" : row.status === "IN_PROGRESS" ? "progress" : ""}`}>
-                    {formatAssignmentStatus(row.status)}
-                  </span>
-                </td>
-                <td>{row.score ?? "—"}</td>
-                <td>{row.lastActivityAt ? new Date(row.lastActivityAt).toLocaleString() : "—"}</td>
-                <td>{row.completedAt ? new Date(row.completedAt).toLocaleDateString() : "—"}</td>
+                {visibleTableColumns.map((column) => {
+                  if (column.key === "learnerName") {
+                    return (
+                      <td key={column.key}>
+                        <strong>{row.learnerName}</strong><br />
+                        <span className="helper">{row.email}</span>
+                      </td>
+                    );
+                  }
+                  if (column.key === "status") {
+                    return (
+                      <td key={column.key}>
+                        <span className={`badge ${row.status === "COMPLETED" ? "completed" : row.status === "IN_PROGRESS" ? "progress" : ""}`}>
+                          {formatAssignmentStatus(row.status)}
+                        </span>
+                      </td>
+                    );
+                  }
+                  return <td key={column.key}>{cellValue(row, column.key) || "—"}</td>;
+                })}
               </tr>
             ))}
           </tbody>

@@ -722,6 +722,78 @@ tr:last-child td { border-bottom: 0; }
 .list-controls-footer { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; color: var(--otto-red-muted); }
 .bulk-actions { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
 
+.filter-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: start; flex-wrap: wrap; }
+.checkbox-filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: start; flex: 1; }
+.checkbox-filter { position: relative; }
+.checkbox-filter-toggle {
+  border: 1px solid rgba(238, 0, 32, 0.35);
+  background: #fff;
+  color: var(--otto-red);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.checkbox-filter-toggle.active {
+  background: rgba(238, 0, 32, .06);
+  border-color: var(--otto-red);
+}
+.checkbox-filter-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  max-width: 320px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 12px 28px rgba(238, 0, 32, .12);
+}
+.checkbox-filter-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.checkbox-filter-options { display: grid; gap: 6px; max-height: 180px; overflow: auto; }
+.checkbox-filter-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--otto-red);
+}
+.checkbox-filter-item input { margin-top: 2px; accent-color: var(--otto-red); }
+.column-manager { position: relative; }
+.column-manager-panel {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 220px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+  max-height: 280px;
+  overflow: auto;
+  box-shadow: 0 12px 28px rgba(238, 0, 32, .12);
+}
+.linkish {
+  border: 0;
+  background: transparent;
+  color: var(--otto-red);
+  padding: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .otto-header-search { display: none; }
   .otto-header-nav,

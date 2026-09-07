@@ -1,9 +1,11 @@
 import type { Db, ObjectId } from "mongodb";
+import { withActiveCourseStages } from "@/lib/assignments";
 import { makeInviteToken } from "@/lib/auth";
 import { isBootstrapAdminEmail } from "@/lib/bootstrap-admins";
 import { sendInvitationEmail } from "@/lib/mail";
 import { findApprovedParticipant } from "@/lib/participants";
-import type { AssignmentDocument, CourseDocument, StakeholderGroup, UserDocument, UserRole } from "@/lib/types";
+import { loadParticipantLookup, overlayRosterOnUser, participantLookupKey, rosterFieldsForUser } from "@/lib/fields";
+import type { AssignmentDocument, CourseDocument, StakeholderGroup, UserDocument, UserRole, UserStatus } from "@/lib/types";
 import { splitFullName } from "@/lib/utils";
 
 export type InviteLearnerInput = {
@@ -33,9 +35,15 @@ export type InviteResult = {
     companyId?: string;
     stakeholderGroup?: StakeholderGroup;
     facilityTraining?: string;
+    belongsToBp?: string;
+    country?: string;
+    topic?: string;
+    nominatedProvider?: string;
+    customFields?: Record<string, string>;
     role: UserRole;
-    status: "INVITED";
+    status: UserStatus;
     createdAt: string;
+    assignedCourses: Array<{ title: string; status: string }>;
   };
   activationUrl: string;
   emailSent: boolean;
@@ -52,16 +60,13 @@ export async function inviteLearner(db: Db, input: InviteLearnerInput): Promise<
   if (!organizationalName) {
     throw new InviteError("Enter your organizational name.", 400);
   }
-  const participant = await findApprovedParticipant(db, input.companyId, input.stakeholderGroup);
+  const participant = await findApprovedParticipant(db, input.companyId, input.stakeholderGroup, organizationalName);
   if (!participant) {
+    const anyForId = await findApprovedParticipant(db, input.companyId, input.stakeholderGroup);
     throw new InviteError(
-      "This Company ID is not on the approved VECTRA participant list for the selected stakeholder group.",
-      400
-    );
-  }
-  if (participant.name.trim().toLowerCase() !== organizationalName.toLowerCase()) {
-    throw new InviteError(
-      "Organizational name must match the approved organization name for this Company ID on the participant roster.",
+      anyForId
+        ? "Organizational name must match the approved organization name for this Company ID on the participant roster."
+        : "This Company ID is not on the approved VECTRA participant list for the selected stakeholder group.",
       400
     );
   }
@@ -76,11 +81,7 @@ export async function inviteLearner(db: Db, input: InviteLearnerInput): Promise<
     lastName,
     email,
     entity: participant.name,
-    companyId: participant.companyId,
-    stakeholderGroup: input.stakeholderGroup,
-    belongsToBp: participant.belongsToBp,
-    country: participant.country,
-    topic: participant.topic,
+    ...rosterFieldsForUser(participant),
     facilityTraining: organizationalName,
     role: "LEARNER",
     status: "INVITED",
@@ -91,8 +92,8 @@ export async function inviteLearner(db: Db, input: InviteLearnerInput): Promise<
   };
 
   const inserted = await db.collection<UserDocument>("users").insertOne(document);
-  await autoAssignTopicCourse(db, inserted.insertedId, participant.topic, now);
-  return finalizeInvite(db, document, inserted.insertedId, invite.token, participant.name);
+  const assignedCourses = await autoAssignTopicCourse(db, inserted.insertedId, participant.topic, now);
+  return finalizeInvite(db, document, inserted.insertedId, invite.token, participant.name, assignedCourses);
 }
 
 export async function inviteStaff(db: Db, input: InviteStaffInput): Promise<InviteResult> {
@@ -126,7 +127,8 @@ async function finalizeInvite(
   document: UserDocument,
   id: ObjectId,
   token: string,
-  organization?: string
+  organization?: string,
+  assignedCourses: AssignedCourseView[] = []
 ): Promise<InviteResult> {
   const activationUrl = `${process.env.APP_URL || "http://localhost:3000"}/activate?token=${encodeURIComponent(token)}`;
   try {
@@ -147,26 +149,14 @@ async function finalizeInvite(
   }
 
   return {
-    user: {
-      id: id.toHexString(),
-      firstName: document.firstName,
-      lastName: document.lastName,
-      email: document.email,
-      entity: document.entity,
-      companyId: document.companyId,
-      stakeholderGroup: document.stakeholderGroup,
-      facilityTraining: document.facilityTraining,
-      role: document.role,
-      status: "INVITED",
-      createdAt: document.createdAt.toISOString()
-    },
+    user: toUserView(document, id, assignedCourses),
     activationUrl,
     emailSent: true,
     organization
   };
 }
 
-async function autoAssignTopicCourse(db: Db, userId: ObjectId, topic: string, now: Date) {
+async function autoAssignTopicCourse(db: Db, userId: ObjectId, topic: string, now: Date): Promise<AssignedCourseView[]> {
   const course = await db.collection<CourseDocument>("courses").findOne({
     active: true,
     type: "SCORM_12",
@@ -175,7 +165,7 @@ async function autoAssignTopicCourse(db: Db, userId: ObjectId, topic: string, no
       { description: { $regex: topic || "Freely Chosen Employment", $options: "i" } }
     ]
   });
-  if (!course?._id) return;
+  if (!course?._id) return [];
   await db.collection<AssignmentDocument>("assignments").updateOne(
     { userId, courseId: course._id },
     {
@@ -191,6 +181,7 @@ async function autoAssignTopicCourse(db: Db, userId: ObjectId, topic: string, no
     },
     { upsert: true }
   );
+  return [{ title: course.title, status: "NOT_STARTED" }];
 }
 
 export class InviteError extends Error {
@@ -203,6 +194,8 @@ export class InviteError extends Error {
 
 export type UserView = Omit<InviteResult["user"], "status"> & { status: UserDocument["status"] };
 
+export type AssignedCourseView = { title: string; status: string };
+
 export type UpdateUserProfileInput = {
   name?: string;
   firstName?: string;
@@ -210,7 +203,33 @@ export type UpdateUserProfileInput = {
   entity?: string;
 };
 
-function toUserView(document: UserDocument, id: ObjectId): UserView {
+export async function listAdminUsers(db: Db): Promise<UserView[]> {
+  const [users, assignmentRows, participants] = await Promise.all([
+    db.collection<UserDocument>("users").find({}).sort({ createdAt: -1 }).toArray(),
+    db.collection("assignments").aggregate([
+      ...withActiveCourseStages(),
+      { $project: { userId: 1, title: "$course.title", status: 1 } }
+    ]).toArray(),
+    loadParticipantLookup(db)
+  ]);
+
+  const coursesByUser = new Map<string, AssignedCourseView[]>();
+  for (const row of assignmentRows as Array<{ userId: ObjectId; title: string; status: string }>) {
+    const key = row.userId.toHexString();
+    const list = coursesByUser.get(key) || [];
+    list.push({ title: row.title, status: row.status });
+    coursesByUser.set(key, list);
+  }
+
+  return users
+    .filter((user) => user._id)
+    .map((user) => {
+      const participant = participants.get(participantLookupKey(user.companyId, user.stakeholderGroup, user.entity));
+      return toUserView(overlayRosterOnUser(user, participant), user._id!, coursesByUser.get(user._id!.toHexString()) || []);
+    });
+}
+
+function toUserView(document: UserDocument, id: ObjectId, assignedCourses: AssignedCourseView[] = []): UserView {
   return {
     id: id.toHexString(),
     firstName: document.firstName,
@@ -220,9 +239,15 @@ function toUserView(document: UserDocument, id: ObjectId): UserView {
     companyId: document.companyId,
     stakeholderGroup: document.stakeholderGroup,
     facilityTraining: document.facilityTraining,
+    belongsToBp: document.belongsToBp,
+    country: document.country,
+    topic: document.topic,
+    nominatedProvider: document.nominatedProvider,
+    customFields: document.customFields || {},
     role: document.role,
     status: document.status,
-    createdAt: document.createdAt.toISOString()
+    createdAt: document.createdAt.toISOString(),
+    assignedCourses
   };
 }
 

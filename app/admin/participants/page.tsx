@@ -2,38 +2,27 @@ import Shell from "@/components/Shell";
 import AdminParticipants from "@/components/AdminParticipants";
 import { canManageParticipantRoster, requirePageUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { normalizeNominatedProvider } from "@/lib/participants";
+import { listFieldDefinitionsForData, toParticipantView } from "@/lib/fields";
 import type { ParticipantDocument } from "@/lib/types";
 
 export default async function AdminParticipantsPage() {
   const user = await requirePageUser(["ADMIN", "COORDINATOR"]);
   const db = await getDb();
-  const participants = await db
-    .collection<ParticipantDocument>("participants")
-    .find({ active: true })
-    .sort({ stakeholderGroup: 1, name: 1 })
-    .toArray();
-
-  const data = participants.map((item) => ({
-    id: item._id!.toHexString(),
-    stakeholderGroup: item.stakeholderGroup,
-    companyId: item.companyId,
-    name: item.name,
-    belongsToBp: item.belongsToBp,
-    country: item.country,
-    topic: item.topic,
-    nominatedProvider: normalizeNominatedProvider(item.nominatedProvider)
-  }));
+  const [participants, fields] = await Promise.all([
+    db.collection<ParticipantDocument>("participants").find({ active: true }).sort({ stakeholderGroup: 1, name: 1 }).toArray(),
+    listFieldDefinitionsForData(db)
+  ]);
 
   return (
     <Shell user={user}>
       <h1 className="page-title">Participant roster</h1>
       <p className="page-subtitle">
         Approved Facilities and Business Partners. Learners can only register with a Company ID from this roster.
-        Administrators can add, edit, remove, or import organizations.
+        Administrators can add, edit, remove, or import organizations. Field definitions are managed in Settings.
       </p>
       <AdminParticipants
-        initialParticipants={data}
+        initialParticipants={participants.filter((item) => item._id).map(toParticipantView)}
+        fields={fields}
         canManage={canManageParticipantRoster(user.role)}
       />
     </Shell>

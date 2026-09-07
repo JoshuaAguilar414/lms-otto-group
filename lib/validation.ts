@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { normalizeNominatedProvider } from "@/lib/participants";
+import { normalizeNominatedProvider } from "@/lib/fields";
 
 export const loginSchema = z.object({
   email: z.email().transform((value) => value.trim().toLowerCase()),

@@ -1,30 +1,35 @@
 "use client";
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
+import { CheckboxFilter, ColumnManager, matchesSelected, uniqueSorted } from "@/components/DataTableControls";
 import ListControls from "@/components/ListControls";
+import { csvFilename, downloadCsv } from "@/lib/csv-download";
+import { getUserFieldValue, type FieldDefinitionView } from "@/lib/fields";
+import type { UserView } from "@/lib/learners";
+import { matchesQuery } from "@/lib/pagination";
 import { SPREADSHEET_ACCEPT } from "@/lib/spreadsheet";
 import { useFilteredPagination } from "@/lib/useFilteredPagination";
 
-interface UserView {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  entity: string;
-  companyId?: string;
-  stakeholderGroup?: string;
-  role: string;
-  status: string;
-  createdAt: string;
-}
-
 type StakeholderGroup = "Business Partner" | "Facility";
+
+const FIXED_COLUMNS = [
+  { key: "learnerName", label: "Name" },
+  { key: "email", label: "Email" }
+];
+
+const TRAILING_COLUMNS = [
+  { key: "assignedCourses", label: "Assigned courses" },
+  { key: "role", label: "Role" },
+  { key: "status", label: "Status" }
+];
 
 export default function AdminUsers({
   initialUsers,
+  fields,
   permissions
 }: {
   initialUsers: UserView[];
+  fields: FieldDefinitionView[];
   permissions: {
     canCreateStaff: boolean;
     canRemoveUsers: boolean;
@@ -35,10 +40,25 @@ export default function AdminUsers({
   const [error, setError] = useState("");
   const [role, setRole] = useState("LEARNER");
   const [stakeholderGroup, setStakeholderGroup] = useState<StakeholderGroup | "">("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [roleFilter, setRoleFilter] = useState("ALL");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
+
+  const fieldColumns = useMemo(
+    () => fields.map((field) => ({ key: field.key, label: field.key === "name" ? "Entity" : field.label })),
+    [fields]
+  );
+  const tableColumns = useMemo(
+    () => [...FIXED_COLUMNS, ...fieldColumns, ...TRAILING_COLUMNS],
+    [fieldColumns]
+  );
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() =>
+    tableColumns.map((column) => column.key)
+  );
+
+  const filterableFields = fields.filter((field) => field.filterable);
+  const editing = users.find((item) => item.id === editingId) || null;
 
   const getSearchValues = useCallback(
     (item: UserView) => [
@@ -49,24 +69,43 @@ export default function AdminUsers({
       item.companyId,
       item.stakeholderGroup,
       item.role,
-      item.status
+      item.status,
+      ...(item.assignedCourses || []).map((course) => course.title),
+      ...fields.map((field) => getUserFieldValue(item, field))
     ],
-    []
+    [fields]
   );
 
   const filteredBySelects = useMemo(
     () => users.filter((item) => {
-      if (statusFilter !== "ALL" && item.status !== statusFilter) return false;
-      if (roleFilter !== "ALL" && item.role !== roleFilter) return false;
-      return true;
+      if (!matchesSelected(item.status, filters.status || [])) return false;
+      if (!matchesSelected(item.role, filters.role || [])) return false;
+      return filterableFields.every((field) => matchesSelected(getUserFieldValue(item, field), filters[field.key] || []));
     }),
-    [users, statusFilter, roleFilter]
+    [users, filters, filterableFields]
   );
 
   const list = useFilteredPagination(filteredBySelects, getSearchValues, { initialPageSize: 10 });
-  const editing = users.find((item) => item.id === editingId) || null;
   const pageIds = list.pageItems.map((item) => item.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const visibleTableColumns = tableColumns.filter((column) => visibleColumns.includes(column.key));
+
+  function cellValue(item: UserView, key: string): string {
+    if (key === "learnerName") return `${item.firstName} ${item.lastName}`.trim();
+    if (key === "email") return item.email;
+    if (key === "role") return item.role;
+    if (key === "status") return item.status;
+    if (key === "assignedCourses") return (item.assignedCourses || []).map((course) => course.title).join("; ");
+    const field = fields.find((itemField) => itemField.key === key);
+    return field ? getUserFieldValue(item, field) : "";
+  }
+
+  function exportFilteredCsv() {
+    const rows = filteredBySelects
+      .filter((item) => matchesQuery(getSearchValues(item), list.query))
+      .map((item) => Object.fromEntries(visibleTableColumns.map((column) => [column.key, cellValue(item, column.key)])));
+    downloadCsv(csvFilename("otto-lms-users"), visibleTableColumns, rows);
+  }
 
   function toggleSelected(id: string) {
     setSelectedIds((current) => {
@@ -82,6 +121,15 @@ export default function AdminUsers({
       const next = new Set(current);
       if (allPageSelected) pageIds.forEach((id) => next.delete(id));
       else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  function toggleExpanded(id: string) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -228,10 +276,14 @@ export default function AdminUsers({
     const data = await response.json();
     if (!response.ok) return setError(data.error || "Could not update user");
 
-    setUsers((current) => current.map((item) => (item.id === editing.id ? data.user : item)));
+    setUsers((current) => current.map((item) => (
+      item.id === editing.id ? { ...item, ...data.user, assignedCourses: item.assignedCourses } : item
+    )));
     setMessage(`${data.user.firstName} ${data.user.lastName} has been updated.`);
     setEditingId(null);
   }
+
+  const colSpan = (permissions.canRemoveUsers ? 2 : 1) + visibleTableColumns.length;
 
   return (
     <div className="grid">
@@ -241,7 +293,7 @@ export default function AdminUsers({
       <div className="grid two">
         <form className="card" onSubmit={createUser}>
           <h2>Create and invite user</h2>
-          <p className="helper">Learners use the same fields as self-registration and must match the participant roster.</p>
+          <p className="helper">Learners use the same fields as self-registration and must match the participant roster. Roster fields (country, topic, custom fields) are copied onto the learner record.</p>
           <div className="field">
             <label>Role</label>
             <select className="select" name="role" value={role} onChange={(event) => setRole(event.target.value)}>
@@ -363,24 +415,46 @@ export default function AdminUsers({
         onPageSizeChange={list.setPageSize}
         searchPlaceholder="Search name, email, company ID…"
         filters={(
-          <div className="list-controls-row">
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Status</label>
-              <select className="select" value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value); list.setPage(1); }}>
-                <option value="ALL">All</option>
-                <option value="INVITED">Invited</option>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
+          <div className="filter-toolbar">
+            <div className="checkbox-filter-bar">
+              <CheckboxFilter
+                label="Status"
+                options={["INVITED", "ACTIVE", "INACTIVE"]}
+                optionLabels={{ INVITED: "Invited", ACTIVE: "Active", INACTIVE: "Inactive" }}
+                selected={filters.status || []}
+                onChange={(next) => { setFilters((current) => ({ ...current, status: next })); list.setPage(1); }}
+              />
+              <CheckboxFilter
+                label="Role"
+                options={["LEARNER", "COORDINATOR", "ADMIN"]}
+                optionLabels={{ LEARNER: "Learner", COORDINATOR: "Coordinator", ADMIN: "Admin" }}
+                selected={filters.role || []}
+                onChange={(next) => { setFilters((current) => ({ ...current, role: next })); list.setPage(1); }}
+              />
+              {filterableFields.map((field) => (
+                <CheckboxFilter
+                  key={field.key}
+                  label={field.label}
+                  options={uniqueSorted([
+                    ...(field.options || []),
+                    ...users.map((item) => getUserFieldValue(item, field))
+                  ])}
+                  selected={filters[field.key] || []}
+                  onChange={(next) => {
+                    setFilters((current) => ({ ...current, [field.key]: next }));
+                    list.setPage(1);
+                  }}
+                />
+              ))}
             </div>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Role</label>
-              <select className="select" value={roleFilter} onChange={(event) => { setRoleFilter(event.target.value); list.setPage(1); }}>
-                <option value="ALL">All</option>
-                <option value="LEARNER">Learner</option>
-                <option value="COORDINATOR">Coordinator</option>
-                <option value="ADMIN">Admin</option>
-              </select>
+            <div className="actions">
+              <ColumnManager
+                columns={tableColumns}
+                visible={visibleColumns}
+                onChange={setVisibleColumns}
+                storageKey="otto-users-columns"
+              />
+              <button className="btn small" type="button" onClick={exportFilteredCsv}>Export CSV</button>
             </div>
           </div>
         )}
@@ -414,75 +488,94 @@ export default function AdminUsers({
                   />
                 </th>
               )}
-              <th>Name</th>
-              <th>Email</th>
-              <th>Entity</th>
-              <th>Company ID</th>
-              <th>Stakeholder</th>
-              <th>Role</th>
-              <th>Status</th>
+              {visibleTableColumns.map((column) => <th key={column.key}>{column.label}</th>)}
               <th>Action</th>
             </tr>
           </thead>
           <tbody>
             {!list.pageItems.length && (
-              <tr><td colSpan={permissions.canRemoveUsers ? 9 : 8}>No users match the current filters.</td></tr>
+              <tr><td colSpan={colSpan}>No users match the current filters.</td></tr>
             )}
-            {list.pageItems.map((item) => (
-              <tr key={item.id}>
-                {permissions.canRemoveUsers && (
+            {list.pageItems.map((item) => {
+              const courses = item.assignedCourses || [];
+              const expanded = expandedIds.has(item.id);
+              const shownCourses = expanded ? courses : courses.slice(0, 2);
+              return (
+                <tr key={item.id}>
+                  {permissions.canRemoveUsers && (
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${item.firstName} ${item.lastName}`}
+                        checked={selectedIds.has(item.id)}
+                        onChange={() => toggleSelected(item.id)}
+                      />
+                    </td>
+                  )}
+                  {visibleTableColumns.map((column) => {
+                    if (column.key === "learnerName") {
+                      return <td key={column.key}><strong>{item.firstName} {item.lastName}</strong></td>;
+                    }
+                    if (column.key === "status") {
+                      return <td key={column.key}><span className={`badge ${item.status.toLowerCase()}`}>{item.status}</span></td>;
+                    }
+                    if (column.key === "assignedCourses") {
+                      return (
+                        <td key={column.key}>
+                          {!courses.length ? "—" : (
+                            <div>
+                              {shownCourses.map((course) => (
+                                <div key={course.title} className="helper">{course.title}</div>
+                              ))}
+                              {courses.length > 2 && (
+                                <button className="linkish" type="button" onClick={() => toggleExpanded(item.id)}>
+                                  {expanded ? "Show less" : `+${courses.length - 2} more`}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      );
+                    }
+                    return <td key={column.key}>{cellValue(item, column.key) || "—"}</td>;
+                  })}
                   <td>
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${item.firstName} ${item.lastName}`}
-                      checked={selectedIds.has(item.id)}
-                      onChange={() => toggleSelected(item.id)}
-                    />
-                  </td>
-                )}
-                <td><strong>{item.firstName} {item.lastName}</strong></td>
-                <td>{item.email}</td>
-                <td>{item.entity}</td>
-                <td>{item.companyId || "—"}</td>
-                <td>{item.stakeholderGroup || "—"}</td>
-                <td>{item.role}</td>
-                <td><span className={`badge ${item.status.toLowerCase()}`}>{item.status}</span></td>
-                <td>
-                  <div className="actions">
-                    {canEditUser(item) && (
-                      <button className="btn secondary small" type="button" onClick={() => setEditingId(item.id)}>
-                        Edit
-                      </button>
-                    )}
-                    {item.status === "INVITED" && (permissions.canCreateStaff || item.role === "LEARNER") && (
-                      <>
-                        <button className="btn small" type="button" onClick={() => void resendInvite(item)}>
-                          Resend invite
+                    <div className="actions">
+                      {canEditUser(item) && (
+                        <button className="btn secondary small" type="button" onClick={() => setEditingId(item.id)}>
+                          Edit
                         </button>
+                      )}
+                      {item.status === "INVITED" && (permissions.canCreateStaff || item.role === "LEARNER") && (
+                        <>
+                          <button className="btn small" type="button" onClick={() => void resendInvite(item)}>
+                            Resend invite
+                          </button>
+                          <button className="btn secondary small" type="button" onClick={() => void setStatus(item, "INACTIVE")}>
+                            Deactivate
+                          </button>
+                        </>
+                      )}
+                      {item.status === "INACTIVE" && (permissions.canCreateStaff || item.role === "LEARNER") && (
+                        <button className="btn small" type="button" onClick={() => void setStatus(item, "ACTIVE")}>
+                          Activate
+                        </button>
+                      )}
+                      {item.status === "ACTIVE" && (permissions.canCreateStaff || item.role === "LEARNER") && (
                         <button className="btn secondary small" type="button" onClick={() => void setStatus(item, "INACTIVE")}>
                           Deactivate
                         </button>
-                      </>
-                    )}
-                    {item.status === "INACTIVE" && (permissions.canCreateStaff || item.role === "LEARNER") && (
-                      <button className="btn small" type="button" onClick={() => void setStatus(item, "ACTIVE")}>
-                        Activate
-                      </button>
-                    )}
-                    {item.status === "ACTIVE" && (permissions.canCreateStaff || item.role === "LEARNER") && (
-                      <button className="btn secondary small" type="button" onClick={() => void setStatus(item, "INACTIVE")}>
-                        Deactivate
-                      </button>
-                    )}
-                    {permissions.canRemoveUsers && (
-                      <button className="btn danger small" type="button" onClick={() => void removeUser(item)}>
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      )}
+                      {permissions.canRemoveUsers && (
+                        <button className="btn danger small" type="button" onClick={() => void removeUser(item)}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -1,80 +1,74 @@
 "use client";
 
 import { FormEvent, useCallback, useMemo, useState } from "react";
+import { CheckboxFilter, ColumnManager, FieldControl, matchesSelected, uniqueSorted } from "@/components/DataTableControls";
 import ListControls from "@/components/ListControls";
+import { defaultFieldValues, getRecordValue, type FieldDefinitionView, type ParticipantView } from "@/lib/fields";
 import { SPREADSHEET_ACCEPT } from "@/lib/spreadsheet";
-import { normalizeNominatedProvider } from "@/lib/participants";
 import { useFilteredPagination } from "@/lib/useFilteredPagination";
-
-interface ParticipantView {
-  id: string;
-  stakeholderGroup: string;
-  companyId: string;
-  name: string;
-  belongsToBp: string;
-  country: string;
-  topic: string;
-  nominatedProvider: string;
-}
-
-const emptyForm = {
-  stakeholderGroup: "Facility",
-  companyId: "",
-  name: "",
-  belongsToBp: "",
-  country: "",
-  topic: "Freely Chosen Employment",
-  nominatedProvider: "VECTRA"
-};
 
 export default function AdminParticipants({
   initialParticipants,
+  fields,
   canManage
 }: {
   initialParticipants: ParticipantView[];
+  fields: FieldDefinitionView[];
   canManage: boolean;
 }) {
   const [participants, setParticipants] = useState(initialParticipants);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [stakeholderFilter, setStakeholderFilter] = useState("ALL");
-  const [countryFilter, setCountryFilter] = useState("ALL");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-
-  const countries = useMemo(
-    () => [...new Set(participants.map((item) => item.country).filter(Boolean))].sort(),
-    [participants]
+  const [formValues, setFormValues] = useState<Record<string, string>>(() => defaultFieldValues(fields));
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const tableColumns = useMemo(
+    () => fields.map((field) => ({ key: field.key, label: field.label })),
+    [fields]
   );
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => tableColumns.map((column) => column.key));
+
+  const filterableFields = fields.filter((field) => field.filterable);
+  const editing = participants.find((item) => item.id === editingId) || null;
+
+  const extraOptionsByKey = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const field of fields) {
+      map[field.key] = uniqueSorted(participants.map((item) => getRecordValue(item, field)));
+    }
+    return map;
+  }, [fields, participants]);
 
   const getSearchValues = useCallback(
-    (item: ParticipantView) => [
-      item.stakeholderGroup,
-      item.companyId,
-      item.name,
-      item.belongsToBp,
-      item.country,
-      item.topic,
-      item.nominatedProvider
-    ],
-    []
+    (item: ParticipantView) => fields.map((field) => getRecordValue(item, field)),
+    [fields]
   );
 
   const filteredBySelects = useMemo(
-    () => participants.filter((item) => {
-      if (stakeholderFilter !== "ALL" && item.stakeholderGroup !== stakeholderFilter) return false;
-      if (countryFilter !== "ALL" && item.country !== countryFilter) return false;
-      return true;
-    }),
-    [participants, stakeholderFilter, countryFilter]
+    () => participants.filter((item) =>
+      filterableFields.every((field) => matchesSelected(getRecordValue(item, field), filters[field.key] || []))
+    ),
+    [participants, filterableFields, filters]
   );
 
   const list = useFilteredPagination(filteredBySelects, getSearchValues, { initialPageSize: 10 });
   const facilities = participants.filter((item) => item.stakeholderGroup === "Facility").length;
   const partners = participants.filter((item) => item.stakeholderGroup === "Business Partner").length;
-  const editing = participants.find((item) => item.id === editingId) || null;
   const pageIds = list.pageItems.map((item) => item.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const visibleFieldColumns = tableColumns.filter((column) => visibleColumns.includes(column.key));
+  const requiredHeaders = fields.filter((field) => field.required).map((field) => field.label);
+
+  function startEdit(item: ParticipantView) {
+    setEditingId(item.id);
+    setEditValues(Object.fromEntries(fields.map((field) => [field.key, getRecordValue(item, field)])));
+  }
+
+  function setFieldValue(key: string, value: string) {
+    setFormValues((current) => ({ ...current, [key]: value }));
+  }
 
   function toggleSelected(id: string) {
     setSelectedIds((current) => {
@@ -129,33 +123,20 @@ export default function AdminParticipants({
     if (refreshed.ok) setParticipants(body.participants || []);
   }
 
-  function readForm(form: FormData) {
-    return {
-      stakeholderGroup: String(form.get("stakeholderGroup") || ""),
-      companyId: String(form.get("companyId") || "").trim(),
-      name: String(form.get("name") || "").trim(),
-      belongsToBp: String(form.get("belongsToBp") || "").trim(),
-      country: String(form.get("country") || "").trim(),
-      topic: String(form.get("topic") || "").trim() || "Freely Chosen Employment",
-      nominatedProvider: normalizeNominatedProvider(String(form.get("nominatedProvider") || ""))
-    };
-  }
-
   async function createParticipant(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const formElement = event.currentTarget;
     setError("");
     setMessage("");
     const response = await fetch("/api/admin/participants", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(readForm(new FormData(formElement)))
+      body: JSON.stringify(formValues)
     });
     const data = await response.json();
     if (!response.ok) return setError(data.error || "Could not create organization");
     setParticipants((current) => [data.participant, ...current]);
     setMessage(data.restored ? "Organization restored and updated." : "Organization added to the roster.");
-    formElement.reset();
+    setFormValues(defaultFieldValues(fields));
   }
 
   async function saveParticipant(event: FormEvent<HTMLFormElement>) {
@@ -166,7 +147,7 @@ export default function AdminParticipants({
     const response = await fetch(`/api/admin/participants/${editing.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(readForm(new FormData(event.currentTarget)))
+      body: JSON.stringify(editValues)
     });
     const data = await response.json();
     if (!response.ok) return setError(data.error || "Could not update organization");
@@ -196,13 +177,20 @@ export default function AdminParticipants({
     const response = await fetch("/api/admin/participants/import", { method: "POST", body: form });
     const data = await response.json();
     if (!response.ok) {
-      setError(data.error || "Participant import failed");
+      const extra = Array.isArray(data.errors) && data.errors.length ? ` ${data.errors.slice(0, 3).join(" | ")}` : "";
+      setError((data.error || "Participant import failed") + extra);
       return;
     }
-    setMessage(`Imported ${data.imported} rows (${data.upserted} new, ${data.updated} updated).`);
+    setMessage(
+      `Imported ${data.imported} rows (${data.upserted} new, ${data.updated} updated).` +
+      (data.skipped ? ` ${data.skipped} row(s) skipped.` : "") +
+      (data.errors?.length ? ` First issues: ${data.errors.slice(0, 3).join(" | ")}` : "")
+    );
     await refreshParticipants();
     formElement.reset();
   }
+
+  const colSpan = (canManage ? 2 : 1) + visibleFieldColumns.length;
 
   return (
     <div className="grid">
@@ -219,26 +207,26 @@ export default function AdminParticipants({
         <div className="grid two">
           <form className="card" onSubmit={createParticipant}>
             <h2>Add organization</h2>
-            <p className="helper">Add a Facility or Business Partner so learners can register with this Company ID.</p>
-            <div className="field">
-              <label>Stakeholder group</label>
-              <select className="select" name="stakeholderGroup" defaultValue={emptyForm.stakeholderGroup} required>
-                <option value="Facility">Facility</option>
-                <option value="Business Partner">Business Partner</option>
-              </select>
-            </div>
-            <div className="field"><label>Company ID</label><input className="input" name="companyId" required /></div>
-            <div className="field"><label>Organization name</label><input className="input" name="name" required /></div>
-            <div className="field"><label>Belongs to BP</label><input className="input" name="belongsToBp" /></div>
-            <div className="field"><label>Country</label><input className="input" name="country" /></div>
-            <div className="field"><label>Topic</label><input className="input" name="topic" defaultValue={emptyForm.topic} /></div>
-            <div className="field"><label>Nominated provider</label><input className="input" name="nominatedProvider" defaultValue={emptyForm.nominatedProvider} /></div>
+            <p className="helper">
+              Fields and required rules are managed in Settings. Dropdowns keep roster values consistent for filters and reports.
+            </p>
+            {fields.map((field) => (
+              <FieldControl
+                key={field.key}
+                field={field}
+                value={formValues[field.key] || ""}
+                extraOptions={extraOptionsByKey[field.key]}
+                onChange={(value) => setFieldValue(field.key, value)}
+                idPrefix="add-field"
+              />
+            ))}
             <button className="btn">Add to roster</button>
           </form>
           <form className="card" onSubmit={importCsv}>
             <h2>Import roster</h2>
             <p className="helper">
-              Bulk import from the VECTRA participant list (CSV or XLSX). Headers: Stakeholder, ID, Name, Belongs to BP, Country, Topic, Nominated Provider.
+              Bulk import from CSV or XLSX. Required headers: {requiredHeaders.join(", ") || "none"}.
+              Empty required cells are rejected. New dropdown values are imported and added to Settings.
             </p>
             <div className="field">
               <label>CSV or XLSX file</label>
@@ -257,20 +245,18 @@ export default function AdminParticipants({
         <form className="card" onSubmit={saveParticipant} key={editing.id}>
           <h2>Edit organization</h2>
           <div className="grid two">
-            <div className="field">
-              <label>Stakeholder group</label>
-              <select className="select" name="stakeholderGroup" defaultValue={editing.stakeholderGroup} required>
-                <option value="Facility">Facility</option>
-                <option value="Business Partner">Business Partner</option>
-              </select>
-            </div>
-            <div className="field"><label>Company ID</label><input className="input" name="companyId" defaultValue={editing.companyId} required /></div>
-            <div className="field"><label>Organization name</label><input className="input" name="name" defaultValue={editing.name} required /></div>
-            <div className="field"><label>Belongs to BP</label><input className="input" name="belongsToBp" defaultValue={editing.belongsToBp} /></div>
-            <div className="field"><label>Country</label><input className="input" name="country" defaultValue={editing.country} /></div>
-            <div className="field"><label>Topic</label><input className="input" name="topic" defaultValue={editing.topic} /></div>
-            <div className="field"><label>Nominated provider</label><input className="input" name="nominatedProvider" defaultValue={editing.nominatedProvider} /></div>
+            {fields.map((field) => (
+              <FieldControl
+                key={field.key}
+                field={field}
+                value={editValues[field.key] || ""}
+                extraOptions={extraOptionsByKey[field.key]}
+                onChange={(value) => setEditValues((current) => ({ ...current, [field.key]: value }))}
+                idPrefix="edit-field"
+              />
+            ))}
           </div>
+          <p className="helper">Edit the values above, then save. Required fields must be filled.</p>
           <div className="actions">
             <button className="btn" type="submit">Save changes</button>
             <button className="btn secondary" type="button" onClick={() => setEditingId(null)}>Cancel</button>
@@ -289,22 +275,27 @@ export default function AdminParticipants({
         onPageSizeChange={list.setPageSize}
         searchPlaceholder="Search company ID, name, country…"
         filters={(
-          <div className="list-controls-row">
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Stakeholder</label>
-              <select className="select" value={stakeholderFilter} onChange={(event) => { setStakeholderFilter(event.target.value); list.setPage(1); }}>
-                <option value="ALL">All</option>
-                <option value="Facility">Facility</option>
-                <option value="Business Partner">Business Partner</option>
-              </select>
+          <div className="filter-toolbar">
+            <div className="checkbox-filter-bar">
+              {filterableFields.map((field) => (
+                <CheckboxFilter
+                  key={field.key}
+                  label={field.label}
+                  options={uniqueSorted([...(field.options || []), ...extraOptionsByKey[field.key]])}
+                  selected={filters[field.key] || []}
+                  onChange={(next) => {
+                    setFilters((current) => ({ ...current, [field.key]: next }));
+                    list.setPage(1);
+                  }}
+                />
+              ))}
             </div>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label>Country</label>
-              <select className="select" value={countryFilter} onChange={(event) => { setCountryFilter(event.target.value); list.setPage(1); }}>
-                <option value="ALL">All</option>
-                {countries.map((country) => <option key={country} value={country}>{country}</option>)}
-              </select>
-            </div>
+            <ColumnManager
+              columns={tableColumns}
+              visible={visibleColumns}
+              onChange={setVisibleColumns}
+              storageKey="otto-participants-columns"
+            />
           </div>
         )}
       />
@@ -337,19 +328,13 @@ export default function AdminParticipants({
                   />
                 </th>
               )}
-              <th>Stakeholder</th>
-              <th>Company ID</th>
-              <th>Name</th>
-              <th>Belongs to BP</th>
-              <th>Country</th>
-              <th>Topic</th>
-              <th>Provider</th>
+              {visibleFieldColumns.map((column) => <th key={column.key}>{column.label}</th>)}
               {canManage && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {!list.pageItems.length && (
-              <tr><td colSpan={canManage ? 9 : 7}>No organizations match the current filters.</td></tr>
+              <tr><td colSpan={colSpan}>No organizations match the current filters.</td></tr>
             )}
             {list.pageItems.map((item) => (
               <tr key={item.id}>
@@ -363,17 +348,18 @@ export default function AdminParticipants({
                     />
                   </td>
                 )}
-                <td><span className="badge">{item.stakeholderGroup}</span></td>
-                <td>{item.companyId}</td>
-                <td>{item.name}</td>
-                <td>{item.belongsToBp || "—"}</td>
-                <td>{item.country || "—"}</td>
-                <td>{item.topic || "—"}</td>
-                <td>{normalizeNominatedProvider(item.nominatedProvider) || "—"}</td>
+                {visibleFieldColumns.map((column) => {
+                  const value = getRecordValue(item, { key: column.key });
+                  return (
+                    <td key={column.key}>
+                      {column.key === "stakeholderGroup" ? <span className="badge">{value}</span> : (value || "—")}
+                    </td>
+                  );
+                })}
                 {canManage && (
                   <td>
                     <div className="actions">
-                      <button className="btn secondary small" type="button" onClick={() => setEditingId(item.id)}>Edit</button>
+                      <button className="btn secondary small" type="button" onClick={() => startEdit(item)}>Edit</button>
                       <button className="btn danger small" type="button" onClick={() => void removeParticipant(item)}>Remove</button>
                     </div>
                   </td>

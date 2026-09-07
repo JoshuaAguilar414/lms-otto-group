@@ -2,29 +2,14 @@ import { NextResponse } from "next/server";
 import { canCreateStaff, canInviteRole } from "@/lib/auth";
 import { isApiError, requireApiUser } from "@/lib/api";
 import { getDb } from "@/lib/db";
-import { InviteError, inviteLearner, inviteStaff } from "@/lib/learners";
-import type { UserDocument } from "@/lib/types";
+import { InviteError, inviteLearner, inviteStaff, listAdminUsers } from "@/lib/learners";
 import { createUserSchema } from "@/lib/validation";
 
 export async function GET() {
   const admin = await requireApiUser(true);
   if (isApiError(admin)) return admin;
   const db = await getDb();
-  const users = await db.collection<UserDocument>("users").find({}).sort({ createdAt: -1 }).toArray();
-  return NextResponse.json({
-    users: users.map((item) => ({
-      id: item._id!.toHexString(),
-      firstName: item.firstName,
-      lastName: item.lastName,
-      email: item.email,
-      entity: item.entity,
-      companyId: item.companyId,
-      stakeholderGroup: item.stakeholderGroup,
-      role: item.role,
-      status: item.status,
-      createdAt: item.createdAt.toISOString()
-    }))
-  });
+  return NextResponse.json({ users: await listAdminUsers(db) });
 }
 
 export async function POST(request: Request) {

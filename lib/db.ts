@@ -1,5 +1,6 @@
 import { MongoClient, type Db } from "mongodb";
-import type { AssignmentDocument, CourseDocument, ParticipantDocument, UserDocument } from "@/lib/types";
+import { ensureFieldDefinitions } from "@/lib/fields";
+import type { AssignmentDocument, CourseDocument, FieldDefinitionDocument, ParticipantDocument, UserDocument } from "@/lib/types";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -49,8 +50,12 @@ async function ensureIndexes(db: Db): Promise<void> {
         { unique: true }
       ),
       db.collection<ParticipantDocument>("participants").createIndex({ companyId: 1, stakeholderGroup: 1, active: 1 }),
-      db.collection<ParticipantDocument>("participants").createIndex({ active: 1, country: 1 })
-    ]).then(() => undefined);
+      db.collection<ParticipantDocument>("participants").createIndex({ active: 1, country: 1 }),
+      db.collection<FieldDefinitionDocument>("fieldDefinitions").createIndex({ key: 1 }, { unique: true }),
+      db.collection<FieldDefinitionDocument>("fieldDefinitions").createIndex({ order: 1 })
+    ]).then(async () => {
+      await ensureFieldDefinitions(db);
+    });
   }
   await global.__indexesReady;
 }

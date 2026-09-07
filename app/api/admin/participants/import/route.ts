@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireFullAdminApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
+import { listFieldDefinitions, persistNewDropdownOptions } from "@/lib/fields";
 import { parseParticipantRows, upsertParticipants } from "@/lib/participants";
 import { parseSpreadsheetFile, SpreadsheetParseError } from "@/lib/spreadsheet";
 
@@ -20,18 +21,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
-  const rows = parseParticipantRows(records);
-  if (!rows.length) {
+  const db = await getDb();
+  const fields = await listFieldDefinitions(db);
+  const parsed = parseParticipantRows(records, fields, { allowNewDropdownValues: true });
+  if (parsed.missingColumns.length) {
     return NextResponse.json({
-      error: "No valid rows found. Required columns: Stakeholder, ID, Name, Belongs to BP, Country, Topic, Nominated Provider."
+      error: `Missing required column(s): ${parsed.missingColumns.join(", ")}.`,
+      errors: parsed.errors
+    }, { status: 400 });
+  }
+  if (!parsed.rows.length) {
+    return NextResponse.json({
+      error: parsed.errors[0] || "No valid rows found. Check required columns and dropdown values.",
+      errors: parsed.errors
     }, { status: 400 });
   }
 
-  const db = await getDb();
-  const result = await upsertParticipants(db, rows);
+  const result = await upsertParticipants(db, parsed.rows, { presentKeys: parsed.presentKeys });
+  await persistNewDropdownOptions(db, fields, parsed.rows);
   return NextResponse.json({
-    imported: rows.length,
+    imported: parsed.rows.length,
     upserted: result.upserted,
-    updated: result.updated
+    updated: result.updated,
+    skipped: parsed.errors.length,
+    errors: parsed.errors.slice(0, 20)
   });
 }

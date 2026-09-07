@@ -63,6 +63,7 @@ export default async function AdminPage() {
           {fullAdmin && <Link className="btn" href="/admin/participants">Open participant roster</Link>}
           <Link className="btn secondary" href="/admin/users">Manage learners</Link>
           <Link className="btn secondary" href="/admin/courses">Manage courses</Link>
+          {fullAdmin && <Link className="btn secondary" href="/admin/settings">Field settings</Link>}
           <div className="helper">Published courses: {courses}</div>
         </div>
       </div>

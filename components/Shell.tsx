@@ -1,4 +1,4 @@
-import { isAdminRole } from "@/lib/auth";
+import { isAdminRole, isFullAdmin } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
 import OttoPageShell from "@/components/OttoPageShell";
 
@@ -10,7 +10,8 @@ export default function Shell({ user, children }: { user: SessionUser; children:
         { href: "/admin/participants", label: "Participants" },
         { href: "/admin/users", label: "Users" },
         { href: "/admin/courses", label: "Courses" },
-        { href: "/admin/reports", label: "Reports" }
+        { href: "/admin/reports", label: "Reports" },
+        ...(isFullAdmin(user.role) ? [{ href: "/admin/settings", label: "Settings" }] : [])
       ]
     : [
         { href: "/dashboard", label: "Overview" },

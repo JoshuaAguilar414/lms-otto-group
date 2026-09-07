@@ -6,6 +6,24 @@ export type CourseType = "SCORM_12" | "MINDSMITH_LINK";
 export type AssignmentStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 export type StakeholderGroup = "Business Partner" | "Facility";
 
+export type FieldType = "text" | "dropdown";
+
+export interface FieldDefinitionDocument {
+  _id?: ObjectId;
+  key: string;
+  label: string;
+  type: FieldType;
+  required: boolean;
+  options: string[];
+  system: boolean;
+  lockedOptions: boolean;
+  copyToUser: boolean;
+  filterable: boolean;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface UserDocument {
   _id?: ObjectId;
   firstName: string;
@@ -18,6 +36,8 @@ export interface UserDocument {
   belongsToBp?: string;
   country?: string;
   topic?: string;
+  nominatedProvider?: string;
+  customFields?: Record<string, string>;
   role: UserRole;
   status: UserStatus;
   passwordHash?: string;
@@ -38,6 +58,7 @@ export interface ParticipantDocument {
   country: string;
   topic: string;
   nominatedProvider: string;
+  customFields?: Record<string, string>;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;

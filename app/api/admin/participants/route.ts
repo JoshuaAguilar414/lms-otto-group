@@ -1,22 +1,9 @@
 import { NextResponse } from "next/server";
 import { isApiError, requireApiUser, requireFullAdminApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
-import { normalizeCompanyId, normalizeNominatedProvider } from "@/lib/participants";
+import { listFieldDefinitionsForData, payloadValues, toParticipantView, validateParticipantValues } from "@/lib/fields";
+import { normalizeCompanyId } from "@/lib/participants";
 import type { ParticipantDocument } from "@/lib/types";
-import { participantSchema } from "@/lib/validation";
-
-function toView(item: ParticipantDocument) {
-  return {
-    id: item._id!.toHexString(),
-    stakeholderGroup: item.stakeholderGroup,
-    companyId: item.companyId,
-    name: item.name,
-    belongsToBp: item.belongsToBp,
-    country: item.country,
-    topic: item.topic,
-    nominatedProvider: normalizeNominatedProvider(item.nominatedProvider)
-  };
-}
 
 export async function GET() {
   const admin = await requireApiUser(true);
@@ -28,25 +15,26 @@ export async function GET() {
     .sort({ stakeholderGroup: 1, name: 1 })
     .toArray();
 
-  return NextResponse.json({ participants: participants.map(toView) });
+  return NextResponse.json({ participants: participants.map(toParticipantView) });
 }
 
 export async function POST(request: Request) {
   const admin = await requireFullAdminApi();
   if (isApiError(admin)) return admin;
 
-  const parsed = participantSchema.safeParse(await request.json());
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid participant" }, { status: 400 });
+  const body = await request.json().catch(() => ({}));
+  const db = await getDb();
+  const fields = await listFieldDefinitionsForData(db);
+  const parsed = validateParticipantValues(fields, payloadValues(body, fields));
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
   const payload = {
     ...parsed.data,
-    companyId: normalizeCompanyId(parsed.data.companyId),
-    topic: parsed.data.topic || "Freely Chosen Employment"
+    companyId: normalizeCompanyId(parsed.data.companyId)
   };
 
-  const db = await getDb();
   const existing = await db.collection<ParticipantDocument>("participants").findOne({
     companyId: payload.companyId,
     name: payload.name,
@@ -65,7 +53,7 @@ export async function POST(request: Request) {
       { $set: { ...payload, active: true, updatedAt: now } }
     );
     const restored = await db.collection<ParticipantDocument>("participants").findOne({ _id: existing._id });
-    return NextResponse.json({ participant: toView(restored!), restored: true });
+    return NextResponse.json({ participant: toParticipantView(restored!), restored: true });
   }
 
   const doc: ParticipantDocument = {
@@ -76,6 +64,6 @@ export async function POST(request: Request) {
   };
   const result = await db.collection<ParticipantDocument>("participants").insertOne(doc);
   return NextResponse.json({
-    participant: toView({ ...doc, _id: result.insertedId })
+    participant: toParticipantView({ ...doc, _id: result.insertedId })
   });
 }
