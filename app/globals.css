@@ -609,6 +609,99 @@ tr:last-child td { border-bottom: 0; }
 .course-card h3 { margin: 0 0 6px; color: var(--otto-red); }
 .login-logo { font-size: 22px; font-weight: 850; margin-bottom: 24px; color: var(--otto-red); }
 .helper { font-size: 13px; color: var(--otto-red-muted); }
+.forgot-password-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+.forgot-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--otto-red);
+  flex-shrink: 0;
+}
+.forgot-help-trigger:hover {
+  background: rgba(238, 0, 32, 0.08);
+}
+.forgot-help-trigger:focus-visible,
+.forgot-help-close:focus-visible {
+  outline: 2px solid var(--otto-red);
+  outline-offset: 2px;
+}
+.forgot-help-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--otto-red);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--otto-red);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+}
+.forgot-help-dialog::backdrop {
+  background: rgba(11, 15, 20, 0.45);
+}
+.forgot-help-dialog-inner {
+  position: relative;
+  padding: 24px 28px 26px;
+}
+.forgot-help-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--otto-red);
+}
+.forgot-help-close:hover {
+  background: rgba(238, 0, 32, 0.08);
+}
+.forgot-help-dialog-inner > p {
+  margin: 0 36px 16px 0;
+  line-height: 1.5;
+  font-size: 15px;
+  color: var(--otto-red);
+}
+.forgot-help-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: var(--otto-red);
+}
+.forgot-help-links {
+  margin: 0 0 20px;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+  line-height: 1.5;
+  font-size: 15px;
+  color: var(--otto-red);
+}
+.forgot-help-links a {
+  font-weight: 600;
+  text-decoration: underline;
+}
+.forgot-help-troubleshooting {
+  width: 100%;
+}
 .scorm-shell { height: calc(100vh - 68px); display: flex; flex-direction: column; background: #fff; }
 .scorm-toolbar {
   min-height: 54px;
