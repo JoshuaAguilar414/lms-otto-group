@@ -73,12 +73,12 @@ export default function LoginForm() {
           <button
             type="button"
             className="forgot-help-trigger"
-            aria-label="Forgot password information"
             aria-haspopup="dialog"
             aria-expanded={helpOpen}
             onClick={openHelp}
           >
-            <Info size={18} strokeWidth={2.25} aria-hidden="true" />
+            <Info size={16} strokeWidth={2.25} aria-hidden="true" />
+            Troubleshooting Guide
           </button>
         </p>
       </form>
