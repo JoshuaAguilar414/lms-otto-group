@@ -68,8 +68,17 @@ export default function LoginForm() {
           <input className="input" id="password" name="password" type="password" autoComplete="current-password" required />
         </div>
         <button className="btn btn-otto" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-        <p className="helper forgot-password-row">
-          <a href="/forgot-password">Forgot password?</a>
+        <div className="login-steps">
+          <p className="login-step">
+            <span className="login-step-label">Step 1</span>
+            <span>
+              New learner? <a href="/register">Register here</a>
+            </span>
+          </p>
+          <p className="login-step">
+            <span className="login-step-label">Step 2</span>
+            <a href="/forgot-password">Forgot password?</a>
+          </p>
           <button
             type="button"
             className="forgot-help-trigger"
@@ -80,7 +89,7 @@ export default function LoginForm() {
             <Info size={16} strokeWidth={2.25} aria-hidden="true" />
             Troubleshooting Guide
           </button>
-        </p>
+        </div>
       </form>
       <dialog
         ref={helpDialogRef}

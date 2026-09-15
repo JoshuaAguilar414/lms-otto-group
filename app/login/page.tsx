@@ -13,9 +13,6 @@ export default async function LoginPage() {
           <h1 className="page-title">Welcome back</h1>
           <p className="page-subtitle">Sign in with your registered corporate email address.</p>
           <LoginForm />
-          <p className="reg-footer">
-            New learner? <a href="/register">Register here</a>
-          </p>
         </div>
       </div>
     </AuthShell>
