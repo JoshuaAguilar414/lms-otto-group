@@ -100,15 +100,13 @@ export default function LoginForm() {
           <h2 id={helpTitleId} className="forgot-help-title">Need help?</h2>
           <ul className="forgot-help-links">
             <li>
-              How to reset your password:{" "}
               <a href={RESET_PASSWORD_GUIDE} target="_blank" rel="noopener noreferrer">
-                Reset Password Tutorial Guide
+                How to reset your password
               </a>
             </li>
             <li>
-              How to create an account:{" "}
               <a href={CREATE_ACCOUNT_GUIDE} target="_blank" rel="noopener noreferrer">
-                Create Account Tutorial Guide
+                How to create an account
               </a>
             </li>
           </ul>
