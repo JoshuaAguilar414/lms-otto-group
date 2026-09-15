@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { isApiError, requireApiUser } from "@/lib/api";
+import { isApiError, requireStaffApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { InviteError, inviteLearner } from "@/lib/learners";
 import { parseSpreadsheetFile, SpreadsheetParseError } from "@/lib/spreadsheet";
 import type { StakeholderGroup } from "@/lib/types";
 
 export async function POST(request: Request) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("users");
   if (isApiError(admin)) return admin;
   const form = await request.formData();
   const file = form.get("file");

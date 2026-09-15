@@ -45,12 +45,16 @@ const RESULT_COLUMNS = [
 
 export default function AdminReports({
   rows,
-  fields
+  fields,
+  initialStatus
 }: {
   rows: ReportRow[];
   fields: FieldDefinitionView[];
+  initialStatus?: string;
 }) {
-  const [filters, setFilters] = useState<Record<string, string[]>>({});
+  const [filters, setFilters] = useState<Record<string, string[]>>(
+    initialStatus ? { status: [initialStatus] } : {}
+  );
   const filterableFields = fields.filter((field) => field.filterable);
   const fieldColumns = fields
     .filter((field) => field.key !== "name")

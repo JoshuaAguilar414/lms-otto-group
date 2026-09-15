@@ -1,13 +1,13 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
-import { isApiError, requireApiUser } from "@/lib/api";
+import { isApiError, requireStaffApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import type { AssignmentDocument, CourseDocument, UserDocument } from "@/lib/types";
 import { safeObjectId } from "@/lib/utils";
 import { assignCourseSchema, bulkAssignSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("courses");
   if (isApiError(admin)) return admin;
   const body = await request.json();
 
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("courses");
   if (isApiError(admin)) return admin;
   const parsed = assignCourseSchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Select a learner and course" }, { status: 400 });

@@ -1,12 +1,12 @@
 import { stringify } from "csv-stringify/sync";
 import { NextResponse } from "next/server";
-import { isApiError, requireApiUser } from "@/lib/api";
+import { isApiError, requireStaffApi } from "@/lib/api";
 import { formatAssignmentStatus } from "@/lib/assignment-display";
 import { withActiveCourseStages } from "@/lib/assignments";
 import { getDb } from "@/lib/db";
 
 export async function GET(request: Request) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("reports");
   if (isApiError(admin)) return admin;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");

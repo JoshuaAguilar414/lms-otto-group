@@ -6,6 +6,7 @@ import ListControls from "@/components/ListControls";
 import { csvFilename, downloadCsv } from "@/lib/csv-download";
 import { getUserFieldValue, type FieldDefinitionView } from "@/lib/fields";
 import type { UserView } from "@/lib/learners";
+import type { RoleView } from "@/lib/role-catalog";
 import { matchesQuery } from "@/lib/pagination";
 import { SPREADSHEET_ACCEPT } from "@/lib/spreadsheet";
 import { useFilteredPagination } from "@/lib/useFilteredPagination";
@@ -26,10 +27,12 @@ const TRAILING_COLUMNS = [
 export default function AdminUsers({
   initialUsers,
   fields,
+  roles,
   permissions
 }: {
   initialUsers: UserView[];
   fields: FieldDefinitionView[];
+  roles: RoleView[];
   permissions: {
     canCreateStaff: boolean;
     canRemoveUsers: boolean;
@@ -93,7 +96,7 @@ export default function AdminUsers({
   function cellValue(item: UserView, key: string): string {
     if (key === "learnerName") return `${item.firstName} ${item.lastName}`.trim();
     if (key === "email") return item.email;
-    if (key === "role") return item.role;
+    if (key === "role") return roles.find((roleItem) => roleItem.key === item.role)?.name || item.role;
     if (key === "status") return item.status;
     if (key === "assignedCourses") return (item.assignedCourses || []).map((course) => course.title).join("; ");
     const field = fields.find((itemField) => itemField.key === key);
@@ -297,13 +300,11 @@ export default function AdminUsers({
           <div className="field">
             <label>Role</label>
             <select className="select" name="role" value={role} onChange={(event) => setRole(event.target.value)}>
-              <option value="LEARNER">LEARNER</option>
-              {permissions.canCreateStaff && (
-                <>
-                  <option value="COORDINATOR">COORDINATOR</option>
-                  <option value="ADMIN">ADMIN</option>
-                </>
-              )}
+              {roles
+                .filter((item) => item.key === "LEARNER" || permissions.canCreateStaff)
+                .map((item) => (
+                  <option key={item.key} value={item.key}>{item.name}</option>
+                ))}
             </select>
           </div>
           <div className="field">
@@ -426,8 +427,11 @@ export default function AdminUsers({
               />
               <CheckboxFilter
                 label="Role"
-                options={["LEARNER", "COORDINATOR", "ADMIN"]}
-                optionLabels={{ LEARNER: "Learner", COORDINATOR: "Coordinator", ADMIN: "Admin" }}
+                options={uniqueSorted([
+                  ...roles.map((item) => item.key),
+                  ...users.map((item) => item.role)
+                ])}
+                optionLabels={Object.fromEntries(roles.map((item) => [item.key, item.name]))}
                 selected={filters.role || []}
                 onChange={(next) => { setFilters((current) => ({ ...current, role: next })); list.setPage(1); }}
               />

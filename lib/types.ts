@@ -1,7 +1,9 @@
 import type { ObjectId } from "mongodb";
 
-export type UserRole = "ADMIN" | "COORDINATOR" | "LEARNER";
+export type SystemRole = "ADMIN" | "COORDINATOR" | "LEARNER";
+export type UserRole = string;
 export type UserStatus = "INVITED" | "ACTIVE" | "INACTIVE";
+export type StaffPage = "overview" | "participants" | "users" | "courses" | "reports" | "settings";
 export type CourseType = "SCORM_12" | "MINDSMITH_LINK";
 export type AssignmentStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
 export type StakeholderGroup = "Business Partner" | "Facility";
@@ -104,7 +106,33 @@ export interface AssignmentDocument {
   assignedAt: Date;
   lastActivityAt?: Date;
   completedAt?: Date;
+  reminderSentAt?: Date;
   updatedAt: Date;
+}
+
+export interface RoleDocument {
+  _id?: ObjectId;
+  key: UserRole;
+  name: string;
+  description: string;
+  system: boolean;
+  pages: StaffPage[];
+  canManageRoster: boolean;
+  canCreateStaff: boolean;
+  canRemoveUsers: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SessionPermissions {
+  staff: boolean;
+  manageRoster: boolean;
+  manageCourses: boolean;
+  manageUsers: boolean;
+  createStaff: boolean;
+  removeUsers: boolean;
+  viewReports: boolean;
+  manageSettings: boolean;
 }
 
 export interface SessionUser {
@@ -114,4 +142,7 @@ export interface SessionUser {
   lastName: string;
   entity: string;
   role: UserRole;
+  roleName: string;
+  pages: StaffPage[];
+  permissions: SessionPermissions;
 }

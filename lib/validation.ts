@@ -15,7 +15,7 @@ export const activateSchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  role: z.enum(["ADMIN", "COORDINATOR", "LEARNER"]).default("LEARNER"),
+  role: z.string().trim().min(1).max(40).default("LEARNER"),
   email: z.email().transform((value) => value.trim().toLowerCase()),
   // Learner invite (same as self-registration)
   name: z.string().trim().min(2).max(200).optional(),

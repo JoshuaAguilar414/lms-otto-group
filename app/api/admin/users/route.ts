@@ -1,34 +1,40 @@
 import { NextResponse } from "next/server";
 import { canCreateStaff, canInviteRole } from "@/lib/auth";
-import { isApiError, requireApiUser } from "@/lib/api";
+import { isApiError, requireStaffApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { InviteError, inviteLearner, inviteStaff, listAdminUsers } from "@/lib/learners";
+import { getRoleByKey } from "@/lib/roles";
 import { createUserSchema } from "@/lib/validation";
 
 export async function GET() {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("users");
   if (isApiError(admin)) return admin;
   const db = await getDb();
   return NextResponse.json({ users: await listAdminUsers(db) });
 }
 
 export async function POST(request: Request) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("users");
   if (isApiError(admin)) return admin;
   const parsed = createUserSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid user" }, { status: 400 });
   }
 
-  if (!canInviteRole(admin.role, parsed.data.role)) {
-    return NextResponse.json({ error: "Coordinators can only invite learners." }, { status: 403 });
+  const db = await getDb();
+  const roleDoc = await getRoleByKey(db, parsed.data.role);
+  if (!roleDoc) {
+    return NextResponse.json({ error: "Unknown user group." }, { status: 400 });
   }
-  if (parsed.data.role !== "LEARNER" && !canCreateStaff(admin.role)) {
+
+  if (!canInviteRole(admin, parsed.data.role)) {
+    return NextResponse.json({ error: "You can only invite learners." }, { status: 403 });
+  }
+  if (parsed.data.role !== "LEARNER" && !canCreateStaff(admin)) {
     return NextResponse.json({ error: "Only administrators can create staff accounts." }, { status: 403 });
   }
 
   try {
-    const db = await getDb();
     const result = parsed.data.role === "LEARNER"
       ? await inviteLearner(db, {
           email: parsed.data.email,
@@ -42,7 +48,7 @@ export async function POST(request: Request) {
           firstName: parsed.data.firstName!,
           lastName: parsed.data.lastName!,
           entity: parsed.data.entity!,
-          role: parsed.data.role === "ADMIN" ? "ADMIN" : "COORDINATOR"
+          role: parsed.data.role
         });
 
     return NextResponse.json({

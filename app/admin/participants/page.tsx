@@ -1,12 +1,12 @@
 import Shell from "@/components/Shell";
 import AdminParticipants from "@/components/AdminParticipants";
-import { canManageParticipantRoster, requirePageUser } from "@/lib/auth";
+import { canManageParticipantRoster, requireStaffPage } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { listFieldDefinitionsForData, toParticipantView } from "@/lib/fields";
 import type { ParticipantDocument } from "@/lib/types";
 
 export default async function AdminParticipantsPage() {
-  const user = await requirePageUser(["ADMIN", "COORDINATOR"]);
+  const user = await requireStaffPage("participants");
   const db = await getDb();
   const [participants, fields] = await Promise.all([
     db.collection<ParticipantDocument>("participants").find({ active: true }).sort({ stakeholderGroup: 1, name: 1 }).toArray(),
@@ -23,7 +23,7 @@ export default async function AdminParticipantsPage() {
       <AdminParticipants
         initialParticipants={participants.filter((item) => item._id).map(toParticipantView)}
         fields={fields}
-        canManage={canManageParticipantRoster(user.role)}
+        canManage={canManageParticipantRoster(user)}
       />
     </Shell>
   );

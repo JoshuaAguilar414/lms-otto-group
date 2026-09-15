@@ -1,46 +1,29 @@
 import Link from "next/link";
+import AdminOverview from "@/components/AdminOverview";
 import Shell from "@/components/Shell";
-import { withActiveCourseStages } from "@/lib/assignments";
-import { isFullAdmin, requirePageUser } from "@/lib/auth";
+import { hasPage, isFullAdmin, requireStaffPage } from "@/lib/auth";
+import { getDashboardStats } from "@/lib/dashboard-stats";
 import { getDb } from "@/lib/db";
-import type { CourseDocument, ParticipantDocument, UserDocument } from "@/lib/types";
 
 export default async function AdminPage() {
-  const user = await requirePageUser(["ADMIN", "COORDINATOR"]);
+  const user = await requireStaffPage("overview");
   const db = await getDb();
-  const [activeUsers, courses, assignmentStats, participants] = await Promise.all([
-    db.collection<UserDocument>("users").countDocuments({ role: "LEARNER", status: { $ne: "INACTIVE" } }),
-    db.collection<CourseDocument>("courses").countDocuments({ active: true }),
-    db.collection("assignments").aggregate([
-      ...withActiveCourseStages(),
-      {
-        $group: {
-          _id: null,
-          total: { $sum: 1 },
-          completed: { $sum: { $cond: [{ $eq: ["$status", "COMPLETED"] }, 1, 0] } }
-        }
-      }
-    ]).toArray(),
-    db.collection<ParticipantDocument>("participants").countDocuments({ active: true })
-  ]);
-  const assignments = assignmentStats[0]?.total || 0;
-  const completed = assignmentStats[0]?.completed || 0;
-  const completionRate = assignments ? Math.round((completed / assignments) * 100) : 0;
-  const fullAdmin = isFullAdmin(user.role);
+  const stats = await getDashboardStats(db);
+  const fullAdmin = isFullAdmin(user);
 
   return (
     <Shell user={user}>
-      <h1 className="page-title">Administration overview</h1>
+      <h1 className="page-title">Training overview</h1>
       <p className="page-subtitle">
-        {fullAdmin
-          ? "Full administrator access: roster, learners, courses, assignments, and reporting."
-          : "Coordinator access: manage learners, upload and assign courses, and view reports."}
+        See who has started, who is in progress, and who has completed assigned courses.
+        Filter by week, month, or year, then open reports for the same learner list.
       </p>
-      <div className="grid three">
-        <div className="card"><div className="muted">Approved organizations</div><div className="stat">{participants}</div></div>
-        <div className="card"><div className="muted">Active and invited learners</div><div className="stat">{activeUsers}</div></div>
-        <div className="card"><div className="muted">Assignment completion</div><div className="stat">{completionRate}%</div></div>
-      </div>
+      <AdminOverview
+        stats={stats}
+        canViewReports={hasPage(user, "reports")}
+        canViewUsers={hasPage(user, "users")}
+        canViewSettings={hasPage(user, "settings")}
+      />
       <div className="card" style={{ marginTop: 20 }}>
         <h2>{fullAdmin ? "Recommended onboarding sequence" : "Coordinator checklist"}</h2>
         {fullAdmin ? (
@@ -63,8 +46,8 @@ export default async function AdminPage() {
           {fullAdmin && <Link className="btn" href="/admin/participants">Open participant roster</Link>}
           <Link className="btn secondary" href="/admin/users">Manage learners</Link>
           <Link className="btn secondary" href="/admin/courses">Manage courses</Link>
-          {fullAdmin && <Link className="btn secondary" href="/admin/settings">Field settings</Link>}
-          <div className="helper">Published courses: {courses}</div>
+          {hasPage(user, "settings") && <Link className="btn secondary" href="/admin/settings">Field settings</Link>}
+          <div className="helper">Published courses: {stats.courses}</div>
         </div>
       </div>
     </Shell>

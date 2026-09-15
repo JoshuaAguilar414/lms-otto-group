@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { isApiError, requireApiUser, requireFullAdminApi } from "@/lib/api";
+import { isApiError, requireFullAdminApi, requireStaffApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { listFieldDefinitionsForData, payloadValues, toParticipantView, validateParticipantValues } from "@/lib/fields";
 import { normalizeCompanyId } from "@/lib/participants";
 import type { ParticipantDocument } from "@/lib/types";
 
 export async function GET() {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("participants");
   if (isApiError(admin)) return admin;
   const db = await getDb();
   const participants = await db

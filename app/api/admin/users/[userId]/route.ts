@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { canEditUser, canRemoveUsers } from "@/lib/auth";
-import { isApiError, requireApiUser } from "@/lib/api";
+import { isApiError, requireStaffApi } from "@/lib/api";
 import { isBootstrapAdminEmail } from "@/lib/bootstrap-admins";
 import { getDb } from "@/lib/db";
 import { InviteError, updateUserProfile } from "@/lib/learners";
@@ -9,7 +9,7 @@ import { safeObjectId } from "@/lib/utils";
 import { updateUserProfileSchema } from "@/lib/validation";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("users");
   if (isApiError(admin)) return admin;
 
   const { userId } = await params;
@@ -29,7 +29,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ us
     return NextResponse.json({ error: "This bootstrap administrator account can only be edited by its owner." }, { status: 400 });
   }
 
-  if (!canEditUser(admin.role, user.role)) {
+  if (!canEditUser(admin, user.role)) {
     return NextResponse.json({ error: "Coordinators can only edit learner profiles." }, { status: 403 });
   }
 
@@ -49,10 +49,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ us
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("users");
   if (isApiError(admin)) return admin;
 
-  if (!canRemoveUsers(admin.role)) {
+  if (!canRemoveUsers(admin)) {
     return NextResponse.json({ error: "Only administrators can remove users." }, { status: 403 });
   }
 

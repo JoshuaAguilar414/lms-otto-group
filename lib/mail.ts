@@ -1,7 +1,9 @@
 import nodemailer from "nodemailer";
+import { getBranding } from "@/lib/branding";
 
 async function sendEmail(input: { to: string; subject: string; text: string; html: string }): Promise<boolean> {
-  const from = process.env.MAIL_FROM || process.env.SMTP_FROM || "Otto Group Academy <onboarding@resend.dev>";
+  const branding = getBranding();
+  const from = process.env.MAIL_FROM || process.env.SMTP_FROM || `${branding.mailFromName} <onboarding@resend.dev>`;
 
   if (process.env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
@@ -106,9 +108,10 @@ export async function sendInvitationEmail(input: {
   learnerName: string;
   activationUrl: string;
 }): Promise<boolean> {
-  const subject = "Activate your Otto Group training account";
-  const text = `Hello ${input.learnerName},\n\nYour Otto Group training account is ready. Activate it here:\n${input.activationUrl}\n\nThis link expires in 7 days.`;
-  const html = `<p>Hello ${escapeHtml(input.learnerName)},</p><p>Your Otto Group training account is ready.</p><p><a href="${escapeHtml(input.activationUrl)}">Activate your account</a></p><p>This link expires in 7 days.</p>`;
+  const { productName } = getBranding();
+  const subject = `Activate your ${productName} account`;
+  const text = `Hello ${input.learnerName},\n\nYour ${productName} training account is ready. Activate it here:\n${input.activationUrl}\n\nThis link expires in 7 days.`;
+  const html = `<p>Hello ${escapeHtml(input.learnerName)},</p><p>Your ${escapeHtml(productName)} training account is ready.</p><p><a href="${escapeHtml(input.activationUrl)}">Activate your account</a></p><p>This link expires in 7 days.</p>`;
   return sendEmail({ to: input.to, subject, text, html });
 }
 
@@ -117,9 +120,23 @@ export async function sendPasswordResetEmail(input: {
   learnerName: string;
   resetUrl: string;
 }): Promise<boolean> {
-  const subject = "Reset your Otto Group Academy password";
+  const { productName } = getBranding();
+  const subject = `Reset your ${productName} password`;
   const text = `Hello ${input.learnerName},\n\nReset your password here:\n${input.resetUrl}\n\nThis link expires in 2 hours. If you did not request this, ignore this email.`;
   const html = `<p>Hello ${escapeHtml(input.learnerName)},</p><p><a href="${escapeHtml(input.resetUrl)}">Reset your password</a></p><p>This link expires in 2 hours. If you did not request this, ignore this email.</p>`;
+  return sendEmail({ to: input.to, subject, text, html });
+}
+
+export async function sendAssignmentReminderEmail(input: {
+  to: string;
+  learnerName: string;
+  courseTitle: string;
+  loginUrl: string;
+}): Promise<boolean> {
+  const { productName } = getBranding();
+  const subject = `Reminder: start your ${input.courseTitle} training`;
+  const text = `Hello ${input.learnerName},\n\nYour ${productName} course "${input.courseTitle}" was assigned more than 3 days ago and has not been started yet.\n\nSign in to begin:\n${input.loginUrl}\n\nIf you have already started, you can ignore this message.`;
+  const html = `<p>Hello ${escapeHtml(input.learnerName)},</p><p>Your ${escapeHtml(productName)} course <strong>${escapeHtml(input.courseTitle)}</strong> was assigned more than 3 days ago and has not been started yet.</p><p><a href="${escapeHtml(input.loginUrl)}">Sign in and start training</a></p><p>If you have already started, you can ignore this message.</p>`;
   return sendEmail({ to: input.to, subject, text, html });
 }
 

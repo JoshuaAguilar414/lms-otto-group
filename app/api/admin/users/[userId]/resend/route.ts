@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { canManageUserStatus, makeInviteToken } from "@/lib/auth";
-import { isApiError, requireApiUser } from "@/lib/api";
+import { isApiError, requireStaffApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { sendInvitationEmail } from "@/lib/mail";
 import type { UserDocument } from "@/lib/types";
 import { safeObjectId } from "@/lib/utils";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("users");
   if (isApiError(admin)) return admin;
 
   const { userId } = await params;
@@ -20,7 +20,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ us
   if (user.status !== "INVITED") {
     return NextResponse.json({ error: "Only invited users can receive a new activation email." }, { status: 400 });
   }
-  if (!canManageUserStatus(admin.role, user.role)) {
+  if (!canManageUserStatus(admin, user.role)) {
     return NextResponse.json({ error: "You cannot resend invites for this user." }, { status: 403 });
   }
 

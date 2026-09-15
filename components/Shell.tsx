@@ -1,18 +1,13 @@
-import { isAdminRole, isFullAdmin } from "@/lib/auth";
+import { hasPage, isStaffUser } from "@/lib/auth";
 import type { SessionUser } from "@/lib/types";
+import { STAFF_PAGES } from "@/lib/role-catalog";
 import OttoPageShell from "@/components/OttoPageShell";
 
 export default function Shell({ user, children }: { user: SessionUser; children: React.ReactNode }) {
-  const admin = isAdminRole(user.role);
-  const items = admin
-    ? [
-        { href: "/admin", label: "Overview" },
-        { href: "/admin/participants", label: "Participants" },
-        { href: "/admin/users", label: "Users" },
-        { href: "/admin/courses", label: "Courses" },
-        { href: "/admin/reports", label: "Reports" },
-        ...(isFullAdmin(user.role) ? [{ href: "/admin/settings", label: "Settings" }] : [])
-      ]
+  const items = isStaffUser(user)
+    ? STAFF_PAGES
+        .filter((page) => hasPage(user, page.key))
+        .map((page) => ({ href: page.href, label: page.label }))
     : [
         { href: "/dashboard", label: "Overview" },
         { href: "/dashboard/courses", label: "My courses" }

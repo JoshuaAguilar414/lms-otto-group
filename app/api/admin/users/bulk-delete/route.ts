@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
 import { canRemoveUsers } from "@/lib/auth";
-import { isApiError, requireApiUser } from "@/lib/api";
+import { isApiError, requireStaffApi } from "@/lib/api";
 import { isBootstrapAdminEmail } from "@/lib/bootstrap-admins";
 import { getDb } from "@/lib/db";
 import type { AssignmentDocument, UserDocument } from "@/lib/types";
@@ -9,10 +9,10 @@ import { safeObjectId } from "@/lib/utils";
 import { bulkDeleteSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("users");
   if (isApiError(admin)) return admin;
 
-  if (!canRemoveUsers(admin.role)) {
+  if (!canRemoveUsers(admin)) {
     return NextResponse.json({ error: "Only administrators can remove users." }, { status: 403 });
   }
 

@@ -1,3 +1,5 @@
+import { getBranding } from "@/lib/branding";
+
 type FooterLink = { label: string; href: string };
 
 type FooterSection = {
@@ -106,10 +108,14 @@ function SocialIcon({ icon }: { icon: (typeof SOCIAL_LINKS)[number]["icon"] }) {
 }
 
 export default function OttoFooter() {
+  const branding = getBranding();
+  const showClientNav = branding.tenant === "otto";
+
   return (
     <footer className="otto-footer">
       <div className="otto-footer-rule" />
       <div className="otto-footer-inner">
+        {showClientNav && (
         <div className="otto-footer-nav">
           {FOOTER_COLUMNS.map((column, index) => (
             <div key={index} className="otto-footer-col">
@@ -132,9 +138,11 @@ export default function OttoFooter() {
             </div>
           ))}
         </div>
+        )}
 
         <div className="otto-footer-meta">
           <div className="otto-footer-meta-left">
+            {showClientNav && (
             <div className="otto-footer-social">
               {SOCIAL_LINKS.map((item) => (
                 <a
@@ -150,9 +158,17 @@ export default function OttoFooter() {
                 </a>
               ))}
             </div>
-            <p className="otto-footer-copy">© {new Date().getFullYear()} Otto Group</p>
+            )}
+            <p className="otto-footer-copy">© {new Date().getFullYear()} {branding.clientName}</p>
+            <p className="otto-footer-powered">
+              e-Learning management system powered by{" "}
+              <a href={branding.vendorUrl} target="_blank" rel="noopener noreferrer">
+                {branding.vendorName}
+              </a>
+            </p>
           </div>
 
+          {showClientNav && (
           <nav className="otto-footer-legal" aria-label="Legal">
             <a href="https://www.ottogroup.com/en/impressum/" target="_blank" rel="noopener noreferrer">
               Imprint
@@ -164,6 +180,7 @@ export default function OttoFooter() {
               Cookie settings
             </a>
           </nav>
+          )}
         </div>
       </div>
     </footer>

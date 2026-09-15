@@ -1,9 +1,19 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import AdminRoles from "@/components/AdminRoles";
 import { canToggleRequired, type FieldDefinitionView } from "@/lib/fields";
+import type { RoleView } from "@/lib/role-catalog";
 
-export default function AdminSettings({ initialFields }: { initialFields: FieldDefinitionView[] }) {
+export default function AdminSettings({
+  initialFields,
+  initialRoles,
+  canManageRoles
+}: {
+  initialFields: FieldDefinitionView[];
+  initialRoles: RoleView[];
+  canManageRoles: boolean;
+}) {
   const [fields, setFields] = useState(initialFields);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -191,6 +201,8 @@ export default function AdminSettings({ initialFields }: { initialFields: FieldD
           </table>
         </div>
       </div>
+
+      {canManageRoles && <AdminRoles initialRoles={initialRoles} />}
     </div>
   );
 }

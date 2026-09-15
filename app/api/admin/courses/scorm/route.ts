@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { apiError, isApiError, requireApiUser } from "@/lib/api";
+import { apiError, isApiError, requireStaffApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { extractScormPackage } from "@/lib/scorm";
 import type { CourseDocument } from "@/lib/types";
@@ -8,7 +8,7 @@ import type { CourseDocument } from "@/lib/types";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("courses");
   if (isApiError(admin)) return admin;
   try {
     const form = await request.formData();

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { getBranding } from "@/lib/branding";
 import "./globals.css";
 
+const branding = getBranding();
+
 export const metadata: Metadata = {
-  title: "Otto Group Academy",
-  description: "VECTRA International learning management system",
+  title: branding.productName,
+  description: branding.description,
   icons: {
     icon: "/favicon-32x32.png",
     shortcut: "/favicon-32x32.png"

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { canManageUserStatus } from "@/lib/auth";
-import { isApiError, requireApiUser } from "@/lib/api";
+import { isApiError, requireStaffApi } from "@/lib/api";
 import { isBootstrapAdminEmail } from "@/lib/bootstrap-admins";
 import { getDb } from "@/lib/db";
 import type { UserDocument, UserStatus } from "@/lib/types";
 import { safeObjectId } from "@/lib/utils";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ userId: string }> }) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("users");
   if (isApiError(admin)) return admin;
 
   const { userId } = await params;
@@ -31,7 +31,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ us
     return NextResponse.json({ error: "This bootstrap administrator account cannot be deactivated." }, { status: 400 });
   }
 
-  if (!canManageUserStatus(admin.role, user.role)) {
+  if (!canManageUserStatus(admin, user.role)) {
     return NextResponse.json({ error: "Coordinators can only activate or deactivate learners." }, { status: 403 });
   }
 

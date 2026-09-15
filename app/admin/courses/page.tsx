@@ -1,11 +1,11 @@
 import Shell from "@/components/Shell";
 import AdminCourses from "@/components/AdminCourses";
-import { canManageCourses, requirePageUser } from "@/lib/auth";
+import { canManageCourses, requireStaffPage } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import type { CourseDocument, UserDocument } from "@/lib/types";
 
 export default async function AdminCoursesPage() {
-  const user = await requirePageUser(["ADMIN", "COORDINATOR"]);
+  const user = await requireStaffPage("courses");
   const db = await getDb();
   const [courses, learners] = await Promise.all([
     db.collection<CourseDocument>("courses").find({ active: true }).sort({ createdAt: -1 }).toArray(),
@@ -30,7 +30,7 @@ export default async function AdminCoursesPage() {
           email: item.email,
           entity: item.entity
         }))}
-        canUpload={canManageCourses(user.role)}
+        canUpload={canManageCourses(user)}
       />
     </Shell>
   );

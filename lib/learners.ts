@@ -14,7 +14,7 @@ export type InviteLearnerInput = {
   companyId: string;
   stakeholderGroup: StakeholderGroup;
   facilityTraining?: string;
-  role?: Extract<UserRole, "LEARNER">;
+  role?: "LEARNER";
 };
 
 export type InviteStaffInput = {
@@ -22,7 +22,7 @@ export type InviteStaffInput = {
   firstName: string;
   lastName: string;
   entity: string;
-  role: Extract<UserRole, "ADMIN" | "COORDINATOR">;
+  role: UserRole;
 };
 
 export type InviteResult = {

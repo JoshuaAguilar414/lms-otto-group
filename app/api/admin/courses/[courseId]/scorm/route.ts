@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiError, isApiError, requireApiUser } from "@/lib/api";
+import { apiError, isApiError, requireStaffApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { extractScormPackage } from "@/lib/scorm";
 import type { CourseDocument } from "@/lib/types";
@@ -8,7 +8,7 @@ import { safeObjectId } from "@/lib/utils";
 export const runtime = "nodejs";
 
 export async function POST(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("courses");
   if (isApiError(admin)) return admin;
 
   const { courseId } = await params;

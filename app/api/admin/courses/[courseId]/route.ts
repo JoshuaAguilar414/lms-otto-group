@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { apiError, isApiError, requireApiUser } from "@/lib/api";
+import { apiError, isApiError, requireStaffApi } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { removeScormPackage } from "@/lib/scorm";
 import type { CourseDocument } from "@/lib/types";
@@ -9,7 +9,7 @@ import { updateCourseSchema } from "@/lib/validation";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("courses");
   if (isApiError(admin)) return admin;
 
   const { courseId } = await params;
@@ -42,7 +42,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ co
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ courseId: string }> }) {
-  const admin = await requireApiUser(true);
+  const admin = await requireStaffApi("courses");
   if (isApiError(admin)) return admin;
 
   const { courseId } = await params;
