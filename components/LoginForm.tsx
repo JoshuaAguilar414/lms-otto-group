@@ -8,7 +8,7 @@ const RESET_PASSWORD_GUIDE =
 const CREATE_ACCOUNT_GUIDE =
   "https://drive.google.com/file/d/1HiSu5EwBj5jP8GupGi6tlotb3vHZk4t3/view?usp=sharing";
 const TROUBLESHOOTING_GUIDE =
-  "https://sites.google.com/vectra-intl.com/otto-group-lmsguide/home";
+  "https://app.mindsmith.ai/learn/cmu41wqdn003h09gmwixtkhph";
 
 export default function LoginForm() {
   const [error, setError] = useState("");
