@@ -13,7 +13,10 @@ export default async function LoginPage() {
         <div className="card card-otto">
           <div className="brand-lockup-text">{branding.productName}</div>
           <h1 className="page-title">Welcome back</h1>
-          <p className="page-subtitle">Sign in with your registered corporate email address.</p>
+          <p className="page-subtitle">
+            Sign in with your registered corporate email address. If you have not registered yet, please{" "}
+            <a href="/register">click here</a>.
+          </p>
           <LoginForm />
         </div>
       </div>
