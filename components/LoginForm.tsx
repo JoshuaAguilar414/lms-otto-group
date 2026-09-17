@@ -68,17 +68,8 @@ export default function LoginForm() {
           <input className="input" id="password" name="password" type="password" autoComplete="current-password" required />
         </div>
         <button className="btn btn-otto" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
-        <div className="login-steps">
-          <p className="login-step">
-            <span className="login-step-label">Step 1</span>
-            <span>
-              New learner? <a href="/register">Register here</a>
-            </span>
-          </p>
-          <p className="login-step">
-            <span className="login-step-label">Step 2</span>
-            <a href="/forgot-password">Forgot password?</a>
-          </p>
+        <div className="login-links">
+          <a href="/forgot-password">Forgot password?</a>
           <button
             type="button"
             className="forgot-help-trigger"

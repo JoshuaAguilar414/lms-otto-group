@@ -698,35 +698,23 @@ tr:last-child td { border-bottom: 0; }
 .course-card h3 { margin: 0 0 6px; color: var(--otto-red); }
 .login-logo { font-size: 22px; font-weight: 850; margin-bottom: 24px; color: var(--otto-red); }
 .helper { font-size: 13px; color: var(--otto-red-muted); }
-.login-steps {
+.login-links {
   display: grid;
   gap: 10px;
   margin-top: 20px;
   justify-items: start;
 }
-.login-step {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 6px 10px;
-  margin: 0;
+.login-links a {
   font-size: 14px;
+  font-weight: 700;
   line-height: 1.45;
-  color: var(--otto-red);
-}
-.login-step-label {
-  font-weight: 700;
-  min-width: 3.5rem;
-}
-.login-step a {
-  font-weight: 700;
   text-decoration: underline;
 }
 .forgot-help-trigger {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: 0;
   padding: 2px 0;
   border: 0;
   border-radius: 0;
