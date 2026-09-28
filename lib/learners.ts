@@ -138,7 +138,7 @@ async function finalizeInvite(
       activationUrl
     });
     if (!emailSent) {
-      throw new Error("Email provider is not configured (set RESEND_API_KEY or SMTP_HOST)");
+      throw new Error("Email provider is not configured (set BREVO_API_KEY, RESEND_API_KEY, or SMTP_HOST)");
     }
   } catch (error) {
     console.error("Invitation email failed", error);

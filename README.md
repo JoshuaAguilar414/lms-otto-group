@@ -79,15 +79,16 @@ Learners can only self-register with a Company ID + stakeholder group present on
 
 ## Invitation email
 
-Preferred free provider: [Resend](https://resend.com) (free tier).
+Preferred free provider on Render: [Brevo](https://www.brevo.com) (300 emails/day free).
 
 ```bash
-RESEND_API_KEY=re_xxxxxxxxx
-MAIL_FROM=Otto Group Academy <onboarding@resend.dev>
+BREVO_API_KEY=xkeysib-xxxxxxxx
+MAIL_FROM=Otto Group Academy <your-verified-sender@yourdomain.com>
 ```
 
+Verify the sender (or domain) in Brevo → Settings → Senders before go-live.
 Self-registration and admin "Create user" both email the activation link only (it is never shown in the UI).
-Configure `RESEND_API_KEY` or SMTP before inviting users.
+Configure `BREVO_API_KEY` (or `RESEND_API_KEY` / SMTP) before inviting users.
 
 Learners can use **Forgot password** on the login page. Admins can **Resend invite** for INVITED users.
 

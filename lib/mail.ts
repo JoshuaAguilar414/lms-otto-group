@@ -3,7 +3,23 @@ import { getBranding } from "@/lib/branding";
 
 async function sendEmail(input: { to: string; subject: string; text: string; html: string }): Promise<boolean> {
   const branding = getBranding();
-  const from = process.env.MAIL_FROM || process.env.SMTP_FROM || `${branding.mailFromName} <onboarding@resend.dev>`;
+  const from =
+    process.env.MAIL_FROM ||
+    process.env.SMTP_FROM ||
+    `${branding.mailFromName} <noreply@example.com>`;
+
+  // Prefer HTTP APIs (Render free tier blocks outbound SMTP on ports 587/465).
+  const brevoKey = process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY;
+  if (brevoKey) {
+    return sendViaBrevoApi({
+      apiKey: brevoKey,
+      from,
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      html: input.html
+    });
+  }
 
   if (process.env.RESEND_API_KEY) {
     const response = await fetch("https://api.resend.com/emails", {
@@ -27,7 +43,6 @@ async function sendEmail(input: { to: string; subject: string; text: string; htm
     return true;
   }
 
-  // Prefer SendGrid HTTP API (works on Render free tier; SMTP ports 587/465 are blocked there).
   const sendgridKey = process.env.SENDGRID_API_KEY || process.env.SMTP_PASSWORD;
   if (sendgridKey?.startsWith("SG.")) {
     return sendViaSendGridApi({
@@ -58,6 +73,38 @@ async function sendEmail(input: { to: string; subject: string; text: string; htm
     text: input.text,
     html: input.html
   });
+  return true;
+}
+
+async function sendViaBrevoApi(input: {
+  apiKey: string;
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}): Promise<boolean> {
+  const sender = parseFromAddress(input.from);
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": input.apiKey,
+      accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: input.to }],
+      subject: input.subject,
+      htmlContent: input.html,
+      textContent: input.text
+    })
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Brevo API email failed: ${response.status} ${detail}`);
+  }
   return true;
 }
 
